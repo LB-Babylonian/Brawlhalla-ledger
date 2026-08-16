@@ -29,16 +29,25 @@ Everything is static, so GitHub Pages hosts it free forever.
 
 ## Logging a match
 
-Tap each of the four slots to pick a legend, then tap the result. That's it — about ten
-seconds. The legends stay selected after saving, because you usually replay the same comp.
+Pick the four legends, then tap **each player's own remaining stocks** — four taps, one per
+player. The result works itself out: whichever team has more stocks left won.
 
-**Score** is the winning team's remaining stocks. A 2v2 ends the moment one team runs out,
-so the final score is always `X–0` or `0–X` — there is no `3–2`. If you play custom lobbies
-with a different stock count, change it under **Data → Stocks / team**.
+**Your legends are pre-filled.** Petra and Sidra to start with, and after that whatever you
+last played. Opponents are deliberately *not* remembered — they clear after every save, so
+you can never record the wrong enemy team by forgetting to change it.
 
-**"Who lost the stocks?"** is optional and appears only when you actually lost stocks. It is
-the *only* per-player signal in a 2v2 (stocks are shared), so it's what powers the
-**Better player** card. Skip it and everything else still works.
+Recording stocks per player rather than one team score is what makes **Better player** a real
+measurement instead of a guess, and it lets every legend row show how long that pick keeps
+*you* alive, not just whether the team won.
+
+Two consequences worth knowing:
+
+- A **timeout** is handled properly — if the clock runs out at 2 stocks vs 1, that's a win,
+  even though nobody hit zero.
+- A **tie can't be saved**. Brawlhalla always resolves in sudden death, so equal totals mean
+  a typo; the app says so rather than storing it.
+
+Default is 3 stocks each. Change it under **Data → Stocks / player** for custom lobbies.
 
 ## What you get
 
@@ -46,8 +55,8 @@ the *only* per-player signal in a 2v2 (stocks are shared), so it's what powers t
 |---|---|
 | Win rate · avg stock diff · streak | Are you actually good, and how convincingly |
 | **Best duos** | Which pairing to lock in — ordered, so "you on Bödvar" ≠ "her on Bödvar" |
-| **Better player** | Stocks lost per match, each of you |
-| **Colin's / Yesmine's legends** | Each player's personal pocket picks |
+| **Better player** | Your own average stocks left, and how often each of you survives |
+| **Colin's / Yesmine's legends** | Team win rate per pick, plus ◈ that player's own average stocks left — how Petra and Sidra really compare to your alternates |
 | **Favourite prey** / **Nemeses** | Enemy legends you beat, and the ones to practise against |
 | **Toughest enemy duos** | Enemy pairings with a winning record over you |
 

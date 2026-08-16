@@ -122,13 +122,33 @@ nav.tabs{display:flex;gap:8px;margin:0 0 18px;flex-wrap:wrap}
 .slots{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .slot{
   background:rgba(0,0,0,.32);box-shadow:inset 0 0 0 1px var(--line);
-  padding:10px;cursor:pointer;border:0;color:inherit;font:inherit;
-  display:flex;flex-direction:column;align-items:center;gap:8px;transition:.16s;width:100%;
+  padding:10px;display:flex;flex-direction:column;align-items:center;gap:8px;transition:.16s;
 }
-.slot:hover{box-shadow:inset 0 0 0 1px var(--gold);transform:translateY(-2px)}
 .slot .who{font-size:10.5px;letter-spacing:1.6px;text-transform:uppercase;color:var(--ink-faint);font-weight:700}
+.pickbtn{background:none;border:0;padding:0;margin:0;cursor:pointer;color:inherit;font:inherit;
+  width:100%;display:flex;flex-direction:column;align-items:center;gap:8px;transition:.16s}
+.pickbtn:hover{transform:translateY(-2px)}
+.pickbtn:hover .port{box-shadow:inset 0 0 0 2px var(--gold)}
 .slot .pick{font-size:13px;font-weight:700;text-align:center;line-height:1.25;min-height:2.4em;display:flex;align-items:center}
 .slot.empty .pick{color:var(--ink-faint)}
+
+/* per-player remaining stocks */
+.stocks{display:flex;gap:4px;width:100%;margin-top:2px}
+.stk{flex:1;padding:8px 0;border:0;cursor:pointer;font-family:var(--display);font-size:15px;
+  background:rgba(255,255,255,.05);box-shadow:inset 0 0 0 1px var(--line);color:var(--ink-faint);transition:.13s}
+.stk:hover{background:rgba(255,255,255,.13);color:var(--ink)}
+.us .stk.on{background:linear-gradient(180deg,#6bb2ff,var(--blue-deep));color:#03142e;box-shadow:0 3px 10px rgba(74,151,255,.3)}
+.them .stk.on{background:linear-gradient(180deg,#ff8585,var(--red-deep));color:#2a0606;box-shadow:0 3px 10px rgba(255,90,90,.3)}
+.stocklbl{font-size:9.5px;letter-spacing:1.4px;text-transform:uppercase;color:var(--ink-faint);font-weight:700}
+
+/* live result read-out */
+.result{display:flex;align-items:center;justify-content:center;gap:18px;flex-wrap:wrap;
+  padding:15px;background:rgba(0,0,0,.28);box-shadow:inset 0 0 0 1px var(--line)}
+.result .word{font-family:var(--display);font-size:27px;letter-spacing:2.5px}
+.result .word.win{color:var(--green)} .result .word.loss{color:var(--red)}
+.result .tot{font-family:var(--display);font-size:31px;font-variant-numeric:tabular-nums;letter-spacing:1px}
+.result .note{font-size:12.5px;color:var(--ink-faint);text-align:center}
+.result .note.warn{color:var(--gold)}
 
 /* Portrait ------------------------------------------------------ */
 .port{position:relative;width:100%;aspect-ratio:1;overflow:hidden;background:#0a0e1c;
@@ -142,32 +162,6 @@ nav.tabs{display:flex;gap:8px;margin:0 0 18px;flex-wrap:wrap}
 .port.blank{background:rgba(0,0,0,.28)}
 .port.blank .crestfall{background:none;color:var(--ink-faint);font-size:2.2em;font-weight:400}
 .slot .port{max-width:130px;margin:0 auto}
-
-/* Score --------------------------------------------------------- */
-.block{margin-top:14px}
-.block>.lbl{font-family:var(--display);font-size:13px;letter-spacing:2px;color:var(--ink-faint);margin-bottom:9px}
-.scorerow{display:flex;gap:9px;flex-wrap:wrap}
-.sbtn{
-  font-family:var(--display);font-size:19px;letter-spacing:1px;padding:12px 20px;border:0;cursor:pointer;
-  background:rgba(255,255,255,.05);box-shadow:inset 0 0 0 1px var(--line);color:var(--ink-dim);
-  transform:skewX(-10deg);transition:.15s;min-width:88px;
-}
-.sbtn>span{display:block;transform:skewX(10deg)}
-.sbtn small{display:block;font-family:var(--body);font-size:9.5px;letter-spacing:1.6px;opacity:.75;margin-top:2px}
-.sbtn:hover{color:var(--ink);background:rgba(255,255,255,.1)}
-.sbtn.win.on{background:linear-gradient(180deg,#57e39b,#189d5e);color:#062314;box-shadow:0 6px 18px rgba(65,209,138,.3)}
-.sbtn.loss.on{background:linear-gradient(180deg,#ff7b7b,var(--red-deep));color:#2a0606;box-shadow:0 6px 18px rgba(255,90,90,.3)}
-
-/* Split (who lost the stocks) ----------------------------------- */
-.splitrow{display:flex;gap:9px;flex-wrap:wrap}
-.split{
-  padding:9px 14px;border:0;cursor:pointer;background:rgba(255,255,255,.05);
-  box-shadow:inset 0 0 0 1px var(--line);color:var(--ink-dim);transition:.15s;
-  font-family:var(--display);font-size:16px;letter-spacing:1px;text-align:center;
-}
-.split small{display:block;font-family:var(--body);font-size:9.5px;letter-spacing:1.3px;text-transform:uppercase;opacity:.7;margin-top:1px}
-.split:hover{color:var(--ink);background:rgba(255,255,255,.1)}
-.split.on{background:linear-gradient(180deg,var(--gold),var(--gold-deep));color:#241703}
 
 .save{
   margin-top:18px;width:100%;padding:17px;border:0;cursor:pointer;
@@ -311,28 +305,21 @@ nav.tabs{display:flex;gap:8px;margin:0 0 18px;flex-wrap:wrap}
       <div class="team us cut">
         <h2>Your Team</h2>
         <div class="slots">
-          <button class="slot cut-sm" data-slot="p1"></button>
-          <button class="slot cut-sm" data-slot="p2"></button>
+          <div class="slot cut-sm" data-slot="p1"></div>
+          <div class="slot cut-sm" data-slot="p2"></div>
         </div>
       </div>
       <div class="team them cut">
         <h2>Enemy Team</h2>
         <div class="slots">
-          <button class="slot cut-sm" data-slot="e1"></button>
-          <button class="slot cut-sm" data-slot="e2"></button>
+          <div class="slot cut-sm" data-slot="e1"></div>
+          <div class="slot cut-sm" data-slot="e2"></div>
         </div>
       </div>
     </div>
 
     <div class="panel cut" style="margin-top:14px">
-      <div class="block" style="margin-top:0">
-        <div class="lbl">Result — stocks left by the winning team</div>
-        <div class="scorerow" id="scorebtns"></div>
-      </div>
-      <div class="block" id="splitblock" hidden>
-        <div class="lbl" id="splitlbl">Who lost the stocks?</div>
-        <div class="splitrow" id="splitbtns"></div>
-      </div>
+      <div class="result cut-sm" id="result"></div>
       <button class="save cut-sm" id="save" disabled>Save Match</button>
     </div>
   </section>
@@ -352,11 +339,11 @@ nav.tabs{display:flex;gap:8px;margin:0 0 18px;flex-wrap:wrap}
     <div class="panel cut">
       <h3 style="font-size:15px;letter-spacing:1.7px;color:var(--gold)">Players</h3>
       <div class="hint" style="font-size:11.5px;color:var(--ink-faint);margin:4px 0 12px">
-        Names used across the app. Slot 1 is always the left-hand player.
+        Names used across the app. Slot 1 is always the left-hand player. Stocks are per player, not shared.
       </div>
       <div class="field"><label for="np1">Player 1</label><input id="np1" maxlength="18"></div>
       <div class="field"><label for="np2">Player 2</label><input id="np2" maxlength="18"></div>
-      <div class="field"><label for="nstocks">Stocks / team</label><input id="nstocks" type="number" min="1" max="9" style="max-width:90px"></div>
+      <div class="field"><label for="nstocks">Stocks / player</label><input id="nstocks" type="number" min="1" max="9" style="max-width:90px"></div>
       <button class="btn cut-sm" id="savesettings">Save settings</button>
     </div>
 
@@ -483,8 +470,16 @@ const nameOf = k => (BY_KEY[k] || {}).n || k;
 /* ============================================================
    Persistence
    ============================================================ */
-const KEY = "brawlhalla-2v2-tracker/v1";
-const DEFAULTS = { v:1, players:{ p1:"Colin", p2:"Yesmine" }, stocks:3, matches:[] };
+/* v2 records each player's own remaining stocks (sp1/sp2/se1/se2) rather than a single
+   team score. v1 data is left untouched on disk under its old key. */
+const KEY = "brawlhalla-2v2-tracker/v2";
+const DEFAULTS = {
+  v:2,
+  players:{ p1:"Colin", p2:"Yesmine" },
+  stocks:3,
+  lastPick:{ p1:"petra", p2:"sidra" },   // your star legends, pre-selected on a fresh start
+  matches:[]
+};
 
 function load(){
   try{
@@ -493,6 +488,7 @@ function load(){
     const d = JSON.parse(raw);
     return { ...structuredClone(DEFAULTS), ...d,
              players:{ ...DEFAULTS.players, ...(d.players||{}) },
+             lastPick:{ ...DEFAULTS.lastPick, ...(d.lastPick||{}) },
              matches: Array.isArray(d.matches) ? d.matches : [] };
   }catch(e){
     console.error("Could not read saved data", e);
@@ -558,7 +554,14 @@ window.addEventListener("hashchange", () => showView(location.hash.slice(1)));
 /* ============================================================
    Draft match state
    ============================================================ */
-let draft = { p1:null, p2:null, e1:null, e2:null, us:null, them:null, d1:null, d2:null };
+const SLOTS = ["p1","p2","e1","e2"];
+
+/** Your own legends carry over between sessions; opponents never do. */
+function freshDraft(){
+  return { p1:S.lastPick.p1, p2:S.lastPick.p2, e1:null, e2:null,
+           stocks:{ p1:null, p2:null, e1:null, e2:null } };
+}
+let draft = freshDraft();
 
 const SLOT_LABEL = () => ({
   p1: S.players.p1, p2: S.players.p2, e1: "Enemy 1", e2: "Enemy 2"
@@ -566,13 +569,52 @@ const SLOT_LABEL = () => ({
 
 function renderSlots(){
   const labels = SLOT_LABEL();
-  $$(".slot").forEach(btn => {
-    const id = btn.dataset.slot, k = draft[id];
-    btn.classList.toggle("empty", !k);
-    btn.innerHTML = `<span class="who">${esc(labels[id])}</span>
-      ${portrait(k)}
-      <span class="pick">${k ? esc(nameOf(k)) : "Tap to pick"}</span>`;
+  $$(".slot").forEach(box => {
+    const id = box.dataset.slot, k = draft[id], v = draft.stocks[id];
+    box.classList.toggle("empty", !k);
+    const buttons = Array.from({ length: S.stocks + 1 }, (_, n) =>
+      `<button class="stk cut-sm${v === n ? " on" : ""}" data-stock="${id}" data-v="${n}"
+        aria-label="${esc(labels[id])}: ${n} stocks left">${n}</button>`).join("");
+    box.innerHTML = `<span class="who">${esc(labels[id])}</span>
+      <button class="pickbtn" data-pick="${id}">
+        ${portrait(k)}
+        <span class="pick">${k ? esc(nameOf(k)) : "Tap to pick"}</span>
+      </button>
+      <span class="stocklbl">Stocks left</span>
+      <div class="stocks">${buttons}</div>`;
   });
+}
+
+/** Totals once every box is filled in; null while the form is incomplete. */
+function draftTotals(){
+  const s = draft.stocks;
+  if(SLOTS.some(id => s[id] === null)) return null;
+  return { us: s.p1 + s.p2, them: s.e1 + s.e2 };
+}
+
+function renderResult(){
+  const el = $("#result");
+  const legendsPicked = SLOTS.every(id => draft[id]);
+  const t = draftTotals();
+
+  if(!legendsPicked || !t){
+    const missing = [];
+    if(!legendsPicked) missing.push("pick all four legends");
+    if(!t) missing.push("set everyone's remaining stocks");
+    el.innerHTML = `<div class="note">To save this match, ${missing.join(" and ")}.</div>`;
+    return;
+  }
+  if(t.us === t.them){
+    el.innerHTML = `<div class="note warn">Both teams on ${t.us} stocks — a Brawlhalla match
+      always resolves, so one side needs more than the other.</div>`;
+    return;
+  }
+  const won = t.us > t.them;
+  el.innerHTML = `<span class="word ${won ? "win" : "loss"}">${won ? "Victory" : "Defeat"}</span>
+    <span class="tot"><span style="color:var(--blue)">${t.us}</span>
+      <span style="color:var(--ink-faint)">–</span>
+      <span style="color:var(--red)">${t.them}</span></span>
+    <span class="note">${draft.stocks.p1}+${draft.stocks.p2} vs ${draft.stocks.e1}+${draft.stocks.e2}</span>`;
 }
 
 /** Recently used legends, most recent first. */
@@ -584,47 +626,23 @@ function recentKeys(){
   return seen.slice(0, 12);
 }
 
-/* ---- score buttons ---- */
-function renderScore(){
-  const max = S.stocks, out = [];
-  for(let s = max; s >= 1; s--)
-    out.push(`<button class="sbtn win cut-sm" data-us="${s}" data-them="0"><span>${s}–0<small>Win</small></span></button>`);
-  for(let s = 1; s <= max; s++)
-    out.push(`<button class="sbtn loss cut-sm" data-us="0" data-them="${s}"><span>0–${s}<small>Loss</small></span></button>`);
-  $("#scorebtns").innerHTML = out.join("");
-  $$("#scorebtns .sbtn").forEach(b => b.addEventListener("click", () => {
-    draft.us = +b.dataset.us; draft.them = +b.dataset.them;
-    draft.d1 = draft.d2 = null;
-    $$("#scorebtns .sbtn").forEach(x => x.classList.toggle("on", x === b));
-    renderSplit(); refreshSave();
-  }));
-}
-
-/** Our lost stocks are always (max - our remaining); ask how they split. */
-function renderSplit(){
-  const block = $("#splitblock");
-  if(draft.us === null){ block.hidden = true; return; }
-  const lost = S.stocks - draft.us;
-  if(lost === 0){ block.hidden = true; draft.d1 = draft.d2 = 0; return; }
-  block.hidden = false;
-  $("#splitlbl").textContent = `Who lost the ${lost} stock${lost>1?"s":""}? (optional)`;
-  const out = [];
-  for(let a = lost; a >= 0; a--)
-    out.push(`<button class="split cut-sm" data-a="${a}" data-b="${lost-a}">${a} – ${lost-a}
-      <small>${esc(S.players.p1)} – ${esc(S.players.p2)}</small></button>`);
-  $("#splitbtns").innerHTML = out.join("");
-  $$("#splitbtns .split").forEach(b => b.addEventListener("click", () => {
-    const on = b.classList.contains("on");
-    $$("#splitbtns .split").forEach(x => x.classList.remove("on"));
-    if(on){ draft.d1 = draft.d2 = null; }             // tap again to clear
-    else { b.classList.add("on"); draft.d1 = +b.dataset.a; draft.d2 = +b.dataset.b; }
-  }));
-}
-
 function refreshSave(){
-  const ok = draft.p1 && draft.p2 && draft.e1 && draft.e2 && draft.us !== null;
-  $("#save").disabled = !ok;
+  const t = draftTotals();
+  $("#save").disabled = !(SLOTS.every(id => draft[id]) && t && t.us !== t.them);
 }
+
+/* Slots are re-rendered wholesale, so both controls are delegated. */
+$(".teams").addEventListener("click", e => {
+  const pick = e.target.closest("[data-pick]");
+  if(pick){ openPicker(pick.dataset.pick); return; }
+
+  const stk = e.target.closest("[data-stock]");
+  if(stk){
+    const id = stk.dataset.stock, v = +stk.dataset.v;
+    draft.stocks[id] = draft.stocks[id] === v ? null : v;   // tap again to clear
+    renderSlots(); renderResult(); refreshSave();
+  }
+});
 
 /* ============================================================
    Legend picker modal
@@ -662,11 +680,10 @@ function renderGrid(q){
   $("#grid").innerHTML = html;
   $$("#grid .lg").forEach(b => b.addEventListener("click", () => {
     draft[pickingSlot] = b.dataset.k;
-    closePicker(); renderSlots(); refreshSave();
+    closePicker(); renderSlots(); renderResult(); refreshSave();
   }));
 }
 
-$$(".slot").forEach(b => b.addEventListener("click", () => openPicker(b.dataset.slot)));
 $("#closemodal").addEventListener("click", closePicker);
 $("#search").addEventListener("input", e => renderGrid(e.target.value));
 $("#modal").addEventListener("click", e => { if(e.target.id === "modal") closePicker(); });
@@ -677,27 +694,28 @@ document.addEventListener("keydown", e => { if(e.key === "Escape" && pickingSlot
    ============================================================ */
 $("#save").addEventListener("click", () => {
   if($("#save").disabled) return;
+  const t = draftTotals();
   S.matches.push({
     id: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random()),
     ts: Date.now(),
-    p1: draft.p1, p2: draft.p2, e1: draft.e1, e2: draft.e2,
-    us: draft.us, them: draft.them,
-    d1: draft.d1, d2: draft.d2
+    p1: draft.p1,  p2: draft.p2,  e1: draft.e1,  e2: draft.e2,
+    sp1: draft.stocks.p1, sp2: draft.stocks.p2,
+    se1: draft.stocks.e1, se2: draft.stocks.e2
   });
+  // Remember the legends you just played so they're pre-selected next time.
+  S.lastPick = { p1: draft.p1, p2: draft.p2 };
   save();
-  const won = draft.us > draft.them;
-  toast(won ? "Win logged ⚔" : "Loss logged");
-  // Keep the legends selected — you usually replay the same comp.
-  draft.us = draft.them = null; draft.d1 = draft.d2 = null;
-  $$("#scorebtns .sbtn").forEach(x => x.classList.remove("on"));
-  $("#splitblock").hidden = true;
-  refreshSave(); updateSubtitle();
+  toast(t.us > t.them ? "Win logged ⚔" : "Loss logged");
+
+  // Your legends stay; opponents and stocks clear so nothing is recorded by accident.
+  draft = freshDraft();
+  renderSlots(); renderResult(); refreshSave(); updateSubtitle();
 });
 
 function updateSubtitle(){
   const n = S.matches.length;
   if(!n){ $("#subtitle").textContent = "2v2 performance tracker"; return; }
-  const w = S.matches.filter(m => m.us > m.them).length;
+  const w = S.matches.filter(m => (m.sp1 + m.sp2) > (m.se1 + m.se2)).length;
   $("#subtitle").textContent = `${n} match${n>1?"es":""} · ${pct(w,n)}% win rate`;
 }
 
@@ -706,20 +724,28 @@ function updateSubtitle(){
    ============================================================ */
 let minGames = 3;
 
-const isWin = m => m.us > m.them;
+const usTotal   = m => m.sp1 + m.sp2;
+const themTotal = m => m.se1 + m.se2;
+const isWin     = m => usTotal(m) > themTotal(m);
+const mean      = a => a.length ? a.reduce((x,y) => x + y, 0) / a.length : 0;
 
-function tally(matches, keyFn){
+/** valFn, when given, averages a per-match number (e.g. that player's stocks left). */
+function tally(matches, keyFn, valFn){
   const map = new Map();
   for(const m of matches){
     for(const key of [].concat(keyFn(m))){
       if(key == null) continue;
-      const e = map.get(key) || { key, w:0, l:0, diff:0 };
+      const e = map.get(key) || { key, w:0, l:0, diff:0, vals:[] };
       isWin(m) ? e.w++ : e.l++;
-      e.diff += m.us - m.them;
+      e.diff += usTotal(m) - themTotal(m);
+      if(valFn) e.vals.push(valFn(m));
       map.set(key, e);
     }
   }
-  return [...map.values()].map(e => ({ ...e, n: e.w + e.l, rate: pct(e.w, e.w + e.l) }));
+  return [...map.values()].map(e => ({
+    ...e, n: e.w + e.l, rate: pct(e.w, e.w + e.l),
+    avg: e.vals.length ? mean(e.vals) : null
+  }));
 }
 
 /** dir=-1 ranks best-first, dir=1 worst-first; bigger samples always win ties. */
@@ -730,10 +756,13 @@ function rank(rows, min, dir = -1){
 
 function rowHTML(portsHTML, label, r){
   const cls = r.rate >= 55 ? "g" : r.rate <= 45 ? "r" : "";
+  const avg = r.avg == null ? ""
+    : `<div class="wl" title="Average stocks left at the end of the match">◈ ${r.avg.toFixed(2)}</div>`;
   return `<div class="rowwrap">
     <div class="row">
       <div class="ports">${portsHTML}</div>
       <div class="name">${label}</div>
+      ${avg}
       <div class="wl">${r.w}W ${r.l}L</div>
       <div class="pct">${r.rate}%</div>
     </div>
@@ -757,7 +786,7 @@ function renderStats(){
   }
 
   const n = M.length, w = M.filter(isWin).length;
-  const diff = M.reduce((a,m) => a + (m.us - m.them), 0) / n;
+  const diff = mean(M.map(m => usTotal(m) - themTotal(m)));
 
   // current streak, from the most recent match backwards
   let streak = 0, streakWin = isWin(M[M.length-1]);
@@ -789,10 +818,10 @@ function renderStats(){
     return rowHTML(portrait(a,"sm") + portrait(b,"sm"), `${esc(nameOf(a))} <span style="color:var(--ink-faint)">+</span> ${esc(nameOf(b))}`, r);
   });
 
-  // --- each player's own legends ---
-  const legs1 = rank(tally(M, m => m.p1), minGames).map(r =>
+  // --- each player's own legends, with how many stocks they personally survive with ---
+  const legs1 = rank(tally(M, m => m.p1, m => m.sp1), minGames).map(r =>
     rowHTML(portrait(r.key,"sm"), esc(nameOf(r.key)), r));
-  const legs2 = rank(tally(M, m => m.p2), minGames).map(r =>
+  const legs2 = rank(tally(M, m => m.p2, m => m.sp2), minGames).map(r =>
     rowHTML(portrait(r.key,"sm"), esc(nameOf(r.key)), r));
 
   // --- enemy legends: count each match once per distinct enemy legend.
@@ -812,8 +841,8 @@ function renderStats(){
   box.innerHTML = kpis + filters + `<div class="cards">
     ${listCard("Best duos", `Your legend pairings — ${p1} first, ${p2} second.`, comps)}
     ${betterPlayerCard(M)}
-    ${listCard(`${p1}'s legends`, "Win rate of the team when they pick each legend.", legs1)}
-    ${listCard(`${p2}'s legends`, "Win rate of the team when they pick each legend.", legs2)}
+    ${listCard(`${p1}'s legends`, `Team win rate with each pick, and ◈ ${p1}'s own average stocks left.`, legs1)}
+    ${listCard(`${p2}'s legends`, `Team win rate with each pick, and ◈ ${p2}'s own average stocks left.`, legs2)}
     ${listCard("Favourite prey", "Enemy legends you have a winning record against.",
         easiest, `No enemy legend is above 50% with ${minGames}+ matches yet.`)}
     ${listCard("Nemeses", "Enemy legends that beat you more often than not — practise against these.",
@@ -828,47 +857,47 @@ function renderStats(){
 }
 
 /**
- * "Better player" — the only per-player signal we have is which of you lost
- * each stock, so this is deliberately built on that and says so.
+ * "Better player" — now a direct measurement: each of you has your own stock
+ * count, so this is simply who tends to still be standing at the end.
  */
 function betterPlayerCard(M){
-  const rec = M.filter(m => m.d1 != null && m.d2 != null);
   const p1 = esc(S.players.p1), p2 = esc(S.players.p2);
-  if(rec.length < 3){
+  if(M.length < 3){
     return `<div class="panel cut card"><h3>Better player</h3>
-      <div class="hint">Needs the optional “who lost the stocks?” split.</div>
-      <div class="empty">Logged on ${rec.length} of ${M.length} matches — record a few more to settle this.</div>
+      <div class="hint">Average stocks left at the end of a match. Higher is better.</div>
+      <div class="empty">${M.length} match${M.length===1?"":"es"} so far — record a few more to settle this.</div>
     </div>`;
   }
-  const s1 = rec.reduce((a,m)=>a+m.d1, 0), s2 = rec.reduce((a,m)=>a+m.d2, 0);
-  const a1 = s1/rec.length, a2 = s2/rec.length, total = s1 + s2;
-  const share1 = pct(s1, total), share2 = 100 - share1;
+  const a1 = mean(M.map(m => m.sp1)), a2 = mean(M.map(m => m.sp2));
+  const surv1 = pct(M.filter(m => m.sp1 > 0).length, M.length);
+  const surv2 = pct(M.filter(m => m.sp2 > 0).length, M.length);
   const gap = Math.abs(a1 - a2);
+  const total = a1 + a2;
+  const share1 = total ? Math.round(a1 / total * 100) : 50;
 
   const even = gap < 0.15;
   let verdict;
-  if(total === 0) verdict = `Nobody has died yet. Suspicious.`;
-  else if(even) verdict = `Dead even — <b>${gap.toFixed(2)}</b> stocks per match between you. Blame the enemy team.`;
+  if(total === 0) verdict = `Neither of you has finished a match alive. Rough patch.`;
+  else if(even) verdict = `Neck and neck — <b>${gap.toFixed(2)}</b> stocks per match between you. Blame the enemy team.`;
   else {
-    const better = a1 < a2 ? p1 : p2, worse = a1 < a2 ? p2 : p1;
-    verdict = `<b>${better}</b> is the steadier half, dying <b>${gap.toFixed(2)}</b> fewer stocks per match than ${worse}.`;
+    const better = a1 > a2 ? p1 : p2, worse = a1 > a2 ? p2 : p1;
+    verdict = `<b>${better}</b> survives <b>${gap.toFixed(2)}</b> more stocks per match than ${worse}.`;
   }
-  // Don't colour a winner when the gap isn't meaningful.
-  const c1 = even ? "gold" : (a1 < a2 ? "good" : "bad");
-  const c2 = even ? "gold" : (a2 < a1 ? "good" : "bad");
-  const caveat = rec.length < 15
-    ? `<div class="hint" style="margin:10px 0 0">Only ${rec.length} matches — treat this as a rumour, not a verdict.</div>` : "";
+  const c1 = even ? "gold" : (a1 > a2 ? "good" : "bad");
+  const c2 = even ? "gold" : (a2 > a1 ? "good" : "bad");
+  const caveat = M.length < 15
+    ? `<div class="hint" style="margin:10px 0 0">Only ${M.length} matches — treat this as a rumour, not a verdict.</div>` : "";
 
   return `<div class="panel cut card"><h3>Better player</h3>
-    <div class="hint">Stocks lost per match, across ${rec.length} matches with a split recorded. Lower is better.</div>
+    <div class="hint">Your own average stocks left at the end, across ${M.length} matches. Higher is better.</div>
     <div class="duel">
       <div class="side"><div class="pn">${p1}</div>
         <div class="big v ${c1}">${a1.toFixed(2)}</div>
-        <div class="cap">${share1}% of losses</div></div>
+        <div class="cap">survived ${surv1}%</div></div>
       <div class="vs">VS</div>
       <div class="side"><div class="pn">${p2}</div>
         <div class="big v ${c2}">${a2.toFixed(2)}</div>
-        <div class="cap">${share2}% of losses</div></div>
+        <div class="cap">survived ${surv2}%</div></div>
     </div>
     <div class="bar" style="height:8px"><i style="width:${share1}%;background:linear-gradient(90deg,var(--blue-deep),var(--blue))"></i></div>
     <div class="verdict cut-sm" style="margin-top:12px">${verdict}</div>${caveat}
@@ -889,13 +918,13 @@ function renderHistory(){
 
   box.innerHTML = [...S.matches].reverse().map(m => {
     const won = isWin(m);
-    const split = (m.d1 != null)
-      ? ` · stocks lost ${esc(S.players.p1)} ${m.d1} / ${esc(S.players.p2)} ${m.d2}` : "";
     return `<div class="match cut-sm ${won?"w":"l"}">
       <div class="side">${portrait(m.p1,"sm")}${portrait(m.p2,"sm")}</div>
-      <div class="sc ${won?"w":"l"}">${m.us}–${m.them}</div>
+      <div class="sc ${won?"w":"l"}">${usTotal(m)}–${themTotal(m)}</div>
       <div class="side">${portrait(m.e1,"sm")}${portrait(m.e2,"sm")}</div>
-      <div class="meta">${fmt(m.ts)}${split}</div>
+      <div class="meta">${fmt(m.ts)} · stocks left
+        ${esc(S.players.p1)} ${m.sp1} / ${esc(S.players.p2)} ${m.sp2}
+        <span style="opacity:.6">vs</span> ${m.se1} / ${m.se2}</div>
       <button class="del" data-id="${m.id}" title="Delete match">✕</button>
     </div>`;
   }).join("");
@@ -920,8 +949,9 @@ $("#savesettings").addEventListener("click", () => {
   S.players.p2 = $("#np2").value.trim() || "Player 2";
   const st = Math.max(1, Math.min(9, +$("#nstocks").value || 3));
   S.stocks = st;
-  save(); fillSettings(); renderSlots(); renderScore(); renderSplit();
-  draft.us = draft.them = null; refreshSave();
+  save(); fillSettings();
+  draft.stocks = { p1:null, p2:null, e1:null, e2:null };   // ranges changed; clear stale picks
+  renderSlots(); renderResult(); refreshSave();
   toast("Settings saved");
 });
 
@@ -967,9 +997,9 @@ $("#file").addEventListener("change", e => {
 $("#wipe").addEventListener("click", () => {
   if(!confirm(`Delete all ${S.matches.length} matches permanently? Export first if you're unsure.`)) return;
   S = structuredClone(DEFAULTS);
-  save(); renderSlots(); renderScore(); updateSubtitle(); fillSettings();
-  draft = { p1:null, p2:null, e1:null, e2:null, us:null, them:null, d1:null, d2:null };
-  refreshSave(); toast("Everything erased");
+  save(); draft = freshDraft();
+  renderSlots(); renderResult(); refreshSave(); updateSubtitle(); fillSettings();
+  toast("Everything erased");
 });
 
 /* ============================================================
@@ -1028,7 +1058,7 @@ $("#swreset").addEventListener("click", async () => {
    Boot
    ============================================================ */
 renderSlots();
-renderScore();
+renderResult();
 refreshSave();
 updateSubtitle();
 showView(location.hash.slice(1), false);
