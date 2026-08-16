@@ -196,6 +196,7 @@ nav.tabs{display:flex;gap:8px;margin:0 0 18px;flex-wrap:wrap}
 .lg:hover{box-shadow:inset 0 0 0 2px var(--gold);transform:translateY(-3px);background:rgba(255,194,71,.1)}
 .lg .nm{font-size:10.5px;font-weight:700;text-align:center;line-height:1.2;letter-spacing:.2px}
 .lg .tag{font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--gold);font-weight:700}
+.grid [hidden]{display:none}
 .groupname{grid-column:1/-1;font-family:var(--display);font-size:12px;letter-spacing:2.2px;
   color:var(--ink-faint);margin:6px 0 -2px}
 
@@ -573,21 +574,32 @@ const SLOT_LABEL = () => ({
   p1: S.players.p1, p2: S.players.p2, e1: "Enemy 1", e2: "Enemy 2"
 });
 
-function renderSlots(){
-  const labels = SLOT_LABEL();
+/* Rebuilding a slot throws away its <img>, which makes the portrait flicker back to
+   the fallback crest for a frame. So: build only when the legend actually changes,
+   and toggle classes for everything else. */
+function renderSlot(id){
+  const box = $(`.slot[data-slot="${id}"]`);
+  const labels = SLOT_LABEL(), k = draft[id], v = draft.stocks[id];
+  box.classList.toggle("empty", !k);
+  const buttons = Array.from({ length: S.stocks + 1 }, (_, n) =>
+    `<button class="stk cut-sm${v === n ? " on" : ""}" data-stock="${id}" data-v="${n}"
+      aria-label="${esc(labels[id])}: ${n} stocks left">${n}</button>`).join("");
+  box.innerHTML = `<span class="who">${esc(labels[id])}</span>
+    <button class="pickbtn" data-pick="${id}">
+      ${portrait(k)}
+      <span class="pick">${k ? esc(nameOf(k)) : "Tap to pick"}</span>
+    </button>
+    <span class="stocklbl">Stocks left</span>
+    <div class="stocks">${buttons}</div>`;
+}
+
+function renderSlots(){ SLOTS.forEach(renderSlot); }
+
+/** Pressed-state only — no DOM teardown, so portraits never reload. */
+function syncStocks(){
   $$(".slot").forEach(box => {
-    const id = box.dataset.slot, k = draft[id], v = draft.stocks[id];
-    box.classList.toggle("empty", !k);
-    const buttons = Array.from({ length: S.stocks + 1 }, (_, n) =>
-      `<button class="stk cut-sm${v === n ? " on" : ""}" data-stock="${id}" data-v="${n}"
-        aria-label="${esc(labels[id])}: ${n} stocks left">${n}</button>`).join("");
-    box.innerHTML = `<span class="who">${esc(labels[id])}</span>
-      <button class="pickbtn" data-pick="${id}">
-        ${portrait(k)}
-        <span class="pick">${k ? esc(nameOf(k)) : "Tap to pick"}</span>
-      </button>
-      <span class="stocklbl">Stocks left</span>
-      <div class="stocks">${buttons}</div>`;
+    const v = draft.stocks[box.dataset.slot];
+    box.querySelectorAll(".stk").forEach(b => b.classList.toggle("on", +b.dataset.v === v));
   });
 }
 
@@ -660,7 +672,7 @@ $(".teams").addEventListener("click", e => {
       for(const other of OPPOSING[id])
         if(draft.stocks[other] === null) draft.stocks[other] = 0;
 
-    renderSlots(); renderResult(); refreshSave();
+    syncStocks(); renderResult(); refreshSave();
   }
 });
 
@@ -673,39 +685,64 @@ function openPicker(slot){
   pickingSlot = slot;
   $("#modaltitle").textContent = SLOT_LABEL()[slot];
   $("#search").value = "";
-  renderGrid("");
+  buildGrid();
+  filterGrid("");
   $("#modal").classList.add("on");
   setTimeout(()=>$("#search").focus(), 60);
 }
 function closePicker(){ $("#modal").classList.remove("on"); pickingSlot = null; }
 
-function renderGrid(q){
-  q = q.trim().toLowerCase();
-  const tile = (l, tag) => `<button class="lg cut-sm" data-k="${l.k}">
-      ${portrait(l.k)}<span class="nm">${esc(l.n)}</span>${tag ? `<span class="tag">${tag}</span>` : ""}</button>`;
+/* The grid is built once per opening and then filtered by hiding tiles. Rebuilding it
+   per keystroke would recreate 70 <img> elements each time and make them all flicker. */
+let gridBuiltFor = null;
+
+function buildGrid(){
+  const rec = recentKeys(pickingSlot);
+  const signature = pickingSlot + "|" + SLOT_LABEL()[pickingSlot] + "|" + rec.join(",");
+  if(gridBuiltFor === signature) return;          // nothing changed since last time
+  gridBuiltFor = signature;
+
+  const tile = (l, extra="") => `<button class="lg cut-sm${extra}" data-k="${l.k}">
+      ${portrait(l.k)}<span class="nm">${esc(l.n)}</span></button>`;
   let html = "";
-  if(!q){
-    const rec = recentKeys(pickingSlot);
-    if(rec.length){
-      html += `<div class="groupname">${esc(SLOT_LABEL()[pickingSlot])}'s recent picks</div>`;
-      html += rec.map(k => BY_KEY[k] ? tile(BY_KEY[k], "") : "").join("");
-      html += `<div class="groupname">All legends · A–Z</div>`;
-    }
-    html += LEGENDS_AZ.map(l => tile(l, "")).join("");
-  } else {
-    const hits = LEGENDS_AZ.filter(l => l.n.toLowerCase().includes(q) || l.k.includes(q));
-    html = hits.length ? hits.map(l => tile(l, "")).join("")
-                       : `<div class="empty" style="grid-column:1/-1">No legend matches “${esc(q)}”.</div>`;
+  if(rec.length){
+    html += `<div class="groupname">${esc(SLOT_LABEL()[pickingSlot])}'s recent picks</div>`;
+    html += rec.map(k => BY_KEY[k] ? tile(BY_KEY[k], " rec") : "").join("");
+    html += `<div class="groupname">All legends · A–Z</div>`;
   }
+  html += LEGENDS_AZ.map(l => tile(l)).join("");
+  html += `<div class="empty" id="noresults" hidden style="grid-column:1/-1"></div>`;
   $("#grid").innerHTML = html;
+
   $$("#grid .lg").forEach(b => b.addEventListener("click", () => {
-    draft[pickingSlot] = b.dataset.k;
-    closePicker(); renderSlots(); renderResult(); refreshSave();
+    const slot = pickingSlot;
+    draft[slot] = b.dataset.k;
+    closePicker(); renderSlot(slot); renderResult(); refreshSave();
   }));
 }
 
+function filterGrid(q){
+  q = q.trim().toLowerCase();
+  const grid = $("#grid");
+  let shown = 0;
+  grid.querySelectorAll(".lg").forEach(b => {
+    const l = BY_KEY[b.dataset.k];
+    // While searching, hide the recents copies so nothing appears twice.
+    const hit = q ? (!b.classList.contains("rec") &&
+                     (l.n.toLowerCase().includes(q) || l.k.includes(q)))
+                  : true;
+    b.hidden = !hit;
+    if(hit) shown++;
+  });
+  grid.querySelectorAll(".groupname").forEach(g => { g.hidden = !!q; });
+  const none = $("#noresults");
+  none.hidden = shown > 0;
+  none.textContent = shown > 0 ? "" : `No legend matches “${q}”.`;
+  grid.scrollTop = 0;
+}
+
 $("#closemodal").addEventListener("click", closePicker);
-$("#search").addEventListener("input", e => renderGrid(e.target.value));
+$("#search").addEventListener("input", e => filterGrid(e.target.value));
 $("#modal").addEventListener("click", e => { if(e.target.id === "modal") closePicker(); });
 document.addEventListener("keydown", e => { if(e.key === "Escape" && pickingSlot) closePicker(); });
 
