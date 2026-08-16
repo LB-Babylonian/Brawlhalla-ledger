@@ -73,6 +73,40 @@ Default is 3 stocks each. Change it under **Data → Stocks / player** for custo
 Every row shows its sample size, and the **Minimum matches** filter defaults to 3+ so a
 single lucky game never crowns a "best" anything.
 
+## Where your data lives — and how to not lose it
+
+Matches are written to `localStorage` on the device that logged them. That is **on disk, not
+in memory**: closing the tab, quitting the browser and restarting the Mac or phone all leave
+it intact. There's no session to expire.
+
+The catch is that browsers key that storage to the **exact address** you opened, scheme, host
+and port included. These are three separate, unrelated stores of the same app:
+
+```
+http://localhost:8000              ← the Mac
+http://192.168.1.208:8000          ← the phone, by IP
+http://macbook-de-colin.local:8000 ← the phone, by name
+```
+
+Your router hands out that IP on a 24-hour DHCP lease. It usually renews to the same address,
+but a router reboot or a stretch away from home can change it — and then the app looks
+completely empty on your phone. Nothing was deleted; it's filed under an address you're no
+longer visiting.
+
+**So use the `.local` name, not the IP.** `./start.sh` now prints it first. The name is fixed;
+the number isn't.
+
+Three other ways storage disappears, none of them specific to this app:
+
+- **Private / incognito tabs** discard everything on close. Use a normal tab.
+- **"Clear History and Website Data"** wipes it, like any site.
+- **Safari clears script storage for sites left unopened for about a week.** Playing regularly
+  resets that clock, and adding it to your Home Screen helps, but it's the strongest argument
+  for the export habit below.
+
+None of this applies once it's on GitHub Pages: a fixed `https://` address never changes, so
+the whole class of problem goes away.
+
 ## Two phones, one dataset
 
 Matches live in `localStorage`, which is per-browser and per-device. To combine your logs:
