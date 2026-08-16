@@ -560,6 +560,7 @@ window.addEventListener("hashchange", () => showView(location.hash.slice(1)));
    Draft match state
    ============================================================ */
 const SLOTS = ["p1","p2","e1","e2"];
+const OPPOSING = { p1:["e1","e2"], p2:["e1","e2"], e1:["p1","p2"], e2:["p1","p2"] };
 
 /** Your own legends carry over between sessions; opponents never do. */
 function freshDraft(){
@@ -622,13 +623,18 @@ function renderResult(){
     <span class="note">${draft.stocks.p1}+${draft.stocks.p2} vs ${draft.stocks.e1}+${draft.stocks.e2}</span>`;
 }
 
-/** Recently used legends, most recent first. */
-function recentKeys(){
+/**
+ * That player's own recent picks, most recent first. Enemy slots get nothing —
+ * who you're drawn against is effectively random, so a "recent" list there is noise.
+ */
+function recentKeys(slot){
+  if(slot !== "p1" && slot !== "p2") return [];
   const seen = [];
-  for(const m of [...S.matches].reverse())
-    for(const k of [m.p1, m.p2, m.e1, m.e2])
-      if(k && !seen.includes(k)) seen.push(k);
-  return seen.slice(0, 12);
+  for(const m of [...S.matches].reverse()){
+    const k = m[slot];
+    if(k && !seen.includes(k)) seen.push(k);
+  }
+  return seen.slice(0, 8);
 }
 
 function refreshSave(){
@@ -644,7 +650,16 @@ $(".teams").addEventListener("click", e => {
   const stk = e.target.closest("[data-stock]");
   if(stk){
     const id = stk.dataset.stock, v = +stk.dataset.v;
-    draft.stocks[id] = draft.stocks[id] === v ? null : v;   // tap again to clear
+    const clearing = draft.stocks[id] === v;                // tap the same number to clear
+    draft.stocks[id] = clearing ? null : v;
+
+    // Finishing with stocks left means the other team was wiped, so fill their
+    // blanks with 0. Only blanks — never overwrite a number you chose yourself,
+    // so a timeout (both teams alive) is still recordable.
+    if(!clearing && v > 0)
+      for(const other of OPPOSING[id])
+        if(draft.stocks[other] === null) draft.stocks[other] = 0;
+
     renderSlots(); renderResult(); refreshSave();
   }
 });
@@ -670,9 +685,9 @@ function renderGrid(q){
       ${portrait(l.k)}<span class="nm">${esc(l.n)}</span>${tag ? `<span class="tag">${tag}</span>` : ""}</button>`;
   let html = "";
   if(!q){
-    const rec = recentKeys();
+    const rec = recentKeys(pickingSlot);
     if(rec.length){
-      html += `<div class="groupname">Recently used</div>`;
+      html += `<div class="groupname">${esc(SLOT_LABEL()[pickingSlot])}'s recent picks</div>`;
       html += rec.map(k => BY_KEY[k] ? tile(BY_KEY[k], "") : "").join("");
       html += `<div class="groupname">All legends · A–Z</div>`;
     }

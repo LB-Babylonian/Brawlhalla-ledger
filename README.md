@@ -29,12 +29,22 @@ Everything is static, so GitHub Pages hosts it free forever.
 
 ## Logging a match
 
-Pick the four legends, then tap **each player's own remaining stocks** — four taps, one per
-player. The result works itself out: whichever team has more stocks left won.
+Pick the four legends, then tap **each player's own remaining stocks**. The result works
+itself out: whichever team has more stocks left won.
+
+In practice that's usually **two taps**. Finishing with stocks left means the other team was
+wiped, so the moment you set a number above 0 for anyone, the opposing pair fills in as 0
+automatically. Your teammate stays blank — that's the one number still worth asking for.
+
+Only *blanks* get filled, never a number you chose yourself, so a **timeout** where both
+teams are still alive is recorded normally: enter your two, then tap the enemy's real
+number over the assumed 0.
 
 **Your legends are pre-filled.** Petra and Sidra to start with, and after that whatever you
-last played. Opponents are deliberately *not* remembered — they clear after every save, so
-you can never record the wrong enemy team by forgetting to change it.
+last played, with your own recent picks pinned at the top of the picker. Opponents get
+neither — their draw is effectively random, so a "recent" list would be noise — and they
+clear after every save, so you can never record the wrong enemy team by forgetting to
+change it.
 
 Recording stocks per player rather than one team score is what makes **Better player** a real
 measurement instead of a guess, and it lets every legend row show how long that pick keeps
