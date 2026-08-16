@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" fill="#0a0e1c"/>
+  <circle cx="256" cy="230" r="200" fill="#ffc247" opacity="0.10"/>
+  <!-- crossed swords -->
+  <g stroke="#ffc247" stroke-width="26" stroke-linecap="round" fill="none">
+    <path d="M150 150 L330 330"/>
+    <path d="M362 150 L182 330"/>
+  </g>
+  <g fill="#e08b18">
+    <circle cx="150" cy="150" r="22"/>
+    <circle cx="362" cy="150" r="22"/>
+  </g>
+  <text x="256" y="452" font-family="Impact, 'Arial Narrow', sans-serif" font-size="96"
+        fill="#ffc247" text-anchor="middle" letter-spacing="4">2V2</text>
+</svg>

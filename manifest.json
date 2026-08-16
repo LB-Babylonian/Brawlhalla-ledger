@@ -1,0 +1,15 @@
+{
+  "name": "Brawl Ledger — 2v2 Tracker",
+  "short_name": "Brawl Ledger",
+  "description": "Track your Brawlhalla 2v2 matches, legends and win rates.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0a0e1c",
+  "theme_color": "#0a0e1c",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}

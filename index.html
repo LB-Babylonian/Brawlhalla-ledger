@@ -1,0 +1,974 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>2v2 Tracker — Brawlhalla</title>
+<meta name="theme-color" content="#0b1020">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230b1020'/><path d='M16 5l3.2 6.7 7.3 1-5.3 5.2 1.3 7.3L16 21.8 9.5 25.2l1.3-7.3L5.5 12.7l7.3-1z' fill='%23ffc247'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Barlow:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   Brawlhalla-flavoured design tokens
+   ============================================================ */
+:root{
+  --bg:#0a0e1c;
+  --bg-2:#111830;
+  --panel:#151d36;
+  --panel-2:#1b2444;
+  --ink:#eef2ff;
+  --ink-dim:#96a1c4;
+  --ink-faint:#5f6b91;
+  --gold:#ffc247;
+  --gold-deep:#e08b18;
+  --blue:#4a97ff;
+  --blue-deep:#1c5fc4;
+  --red:#ff5a5a;
+  --red-deep:#c42a2a;
+  --green:#41d18a;
+  --line:rgba(255,255,255,.10);
+  --cut:14px;
+  --cut-sm:8px;
+  --shadow:0 12px 34px rgba(0,0,0,.5);
+  --display:'Anton','Haettenschweiler','Arial Narrow',Impact,system-ui,sans-serif;
+  --body:'Barlow',system-ui,-apple-system,'Segoe UI',sans-serif;
+}
+
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  font-family:var(--body);
+  color:var(--ink);
+  background:var(--bg);
+  background-image:
+    radial-gradient(1100px 620px at 50% -180px, rgba(255,194,71,.16), transparent 65%),
+    radial-gradient(800px 500px at 0% 100%, rgba(74,151,255,.10), transparent 60%),
+    radial-gradient(800px 500px at 100% 100%, rgba(255,90,90,.08), transparent 60%),
+    linear-gradient(180deg,#0a0e1c 0%,#0d1428 55%,#0a0e1c 100%);
+  background-attachment:fixed;
+  min-height:100vh;
+  -webkit-text-size-adjust:100%;
+  padding-bottom:64px;
+}
+.wrap{max-width:1080px;margin:0 auto;padding:20px 16px 40px}
+
+/* Angular "cut corner" surfaces --------------------------------- */
+.cut{clip-path:polygon(var(--cut) 0,100% 0,100% calc(100% - var(--cut)),calc(100% - var(--cut)) 100%,0 100%,0 var(--cut))}
+.cut-sm{clip-path:polygon(var(--cut-sm) 0,100% 0,100% calc(100% - var(--cut-sm)),calc(100% - var(--cut-sm)) 100%,0 100%,0 var(--cut-sm))}
+
+.panel{
+  background:linear-gradient(160deg,var(--panel-2),var(--panel));
+  box-shadow:inset 0 0 0 1px var(--line), var(--shadow);
+  padding:18px;
+}
+
+h1,h2,h3,.display{font-family:var(--display);font-weight:400;text-transform:uppercase;letter-spacing:.5px;margin:0}
+
+/* ============================================================
+   Header
+   ============================================================ */
+header{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:18px}
+.crest{
+  width:46px;height:46px;flex:none;display:grid;place-items:center;
+  background:linear-gradient(150deg,var(--gold),var(--gold-deep));
+  clip-path:polygon(50% 0,100% 26%,100% 74%,50% 100%,0 74%,0 26%);
+  color:#241703;font-family:var(--display);font-size:22px;
+}
+.title{line-height:1}
+.title h1{font-size:clamp(26px,5.2vw,40px);
+  background:linear-gradient(180deg,#fff 30%,var(--gold) 95%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 2px 0 rgba(0,0,0,.5));}
+.title .sub{font-size:12px;letter-spacing:2.4px;text-transform:uppercase;color:var(--ink-faint);margin-top:3px}
+.spacer{flex:1}
+
+/* Tabs ---------------------------------------------------------- */
+nav.tabs{display:flex;gap:8px;margin:0 0 18px;flex-wrap:wrap}
+.tab{
+  font-family:var(--display);font-size:15px;letter-spacing:1.4px;text-transform:uppercase;
+  padding:11px 22px;border:0;cursor:pointer;color:var(--ink-dim);
+  background:rgba(255,255,255,.05);
+  box-shadow:inset 0 0 0 1px var(--line);
+  transform:skewX(-10deg);transition:.16s;
+}
+.tab>span{display:block;transform:skewX(10deg)}
+.tab:hover{color:var(--ink);background:rgba(255,255,255,.09)}
+.tab.on{
+  color:#241703;background:linear-gradient(180deg,var(--gold),var(--gold-deep));
+  box-shadow:0 6px 18px rgba(255,194,71,.28);
+}
+.view{display:none}
+.view.on{display:block;animation:fade .22s ease}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+/* ============================================================
+   Log tab — team panels
+   ============================================================ */
+.teams{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:720px){.teams{grid-template-columns:1fr}}
+
+.team{padding:16px}
+.team.us{background:linear-gradient(160deg,rgba(74,151,255,.20),rgba(21,29,54,.96));box-shadow:inset 0 0 0 1px rgba(74,151,255,.35),var(--shadow)}
+.team.them{background:linear-gradient(160deg,rgba(255,90,90,.18),rgba(21,29,54,.96));box-shadow:inset 0 0 0 1px rgba(255,90,90,.32),var(--shadow)}
+.team h2{font-size:17px;letter-spacing:1.6px;display:flex;align-items:center;gap:8px;margin-bottom:14px}
+.team.us h2{color:var(--blue)} .team.them h2{color:var(--red)}
+.team h2::before{content:"";width:4px;height:17px;background:currentColor;transform:skewX(-12deg)}
+
+.slots{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.slot{
+  background:rgba(0,0,0,.32);box-shadow:inset 0 0 0 1px var(--line);
+  padding:10px;cursor:pointer;border:0;color:inherit;font:inherit;
+  display:flex;flex-direction:column;align-items:center;gap:8px;transition:.16s;width:100%;
+}
+.slot:hover{box-shadow:inset 0 0 0 1px var(--gold);transform:translateY(-2px)}
+.slot .who{font-size:10.5px;letter-spacing:1.6px;text-transform:uppercase;color:var(--ink-faint);font-weight:700}
+.slot .pick{font-size:13px;font-weight:700;text-align:center;line-height:1.25;min-height:2.4em;display:flex;align-items:center}
+.slot.empty .pick{color:var(--ink-faint)}
+
+/* Portrait ------------------------------------------------------ */
+.port{position:relative;width:100%;aspect-ratio:1;overflow:hidden;background:#0a0e1c;
+  box-shadow:inset 0 0 0 1px var(--line)}
+.port .crestfall{position:absolute;inset:0;display:grid;place-items:center;
+  font-family:var(--display);font-size:1.7em;color:rgba(255,255,255,.82);
+  background:linear-gradient(160deg,hsl(var(--h) 55% 34%),hsl(var(--h) 60% 16%))}
+.port img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+.port img[hidden]{display:none}
+.port.sm{width:34px;height:34px;aspect-ratio:auto;flex:none}
+.port.blank{background:rgba(0,0,0,.28)}
+.port.blank .crestfall{background:none;color:var(--ink-faint);font-size:2.2em;font-weight:400}
+.slot .port{max-width:130px;margin:0 auto}
+
+/* Score --------------------------------------------------------- */
+.block{margin-top:14px}
+.block>.lbl{font-family:var(--display);font-size:13px;letter-spacing:2px;color:var(--ink-faint);margin-bottom:9px}
+.scorerow{display:flex;gap:9px;flex-wrap:wrap}
+.sbtn{
+  font-family:var(--display);font-size:19px;letter-spacing:1px;padding:12px 20px;border:0;cursor:pointer;
+  background:rgba(255,255,255,.05);box-shadow:inset 0 0 0 1px var(--line);color:var(--ink-dim);
+  transform:skewX(-10deg);transition:.15s;min-width:88px;
+}
+.sbtn>span{display:block;transform:skewX(10deg)}
+.sbtn small{display:block;font-family:var(--body);font-size:9.5px;letter-spacing:1.6px;opacity:.75;margin-top:2px}
+.sbtn:hover{color:var(--ink);background:rgba(255,255,255,.1)}
+.sbtn.win.on{background:linear-gradient(180deg,#57e39b,#189d5e);color:#062314;box-shadow:0 6px 18px rgba(65,209,138,.3)}
+.sbtn.loss.on{background:linear-gradient(180deg,#ff7b7b,var(--red-deep));color:#2a0606;box-shadow:0 6px 18px rgba(255,90,90,.3)}
+
+/* Split (who lost the stocks) ----------------------------------- */
+.splitrow{display:flex;gap:9px;flex-wrap:wrap}
+.split{
+  padding:9px 14px;border:0;cursor:pointer;background:rgba(255,255,255,.05);
+  box-shadow:inset 0 0 0 1px var(--line);color:var(--ink-dim);transition:.15s;
+  font-family:var(--display);font-size:16px;letter-spacing:1px;text-align:center;
+}
+.split small{display:block;font-family:var(--body);font-size:9.5px;letter-spacing:1.3px;text-transform:uppercase;opacity:.7;margin-top:1px}
+.split:hover{color:var(--ink);background:rgba(255,255,255,.1)}
+.split.on{background:linear-gradient(180deg,var(--gold),var(--gold-deep));color:#241703}
+
+.save{
+  margin-top:18px;width:100%;padding:17px;border:0;cursor:pointer;
+  font-family:var(--display);font-size:21px;letter-spacing:3px;text-transform:uppercase;
+  background:linear-gradient(180deg,var(--gold),var(--gold-deep));color:#241703;
+  box-shadow:0 10px 26px rgba(255,194,71,.3);transition:.15s;
+}
+.save:hover:not(:disabled){filter:brightness(1.08);transform:translateY(-2px)}
+.save:disabled{background:rgba(255,255,255,.06);color:var(--ink-faint);box-shadow:inset 0 0 0 1px var(--line);cursor:not-allowed}
+
+/* ============================================================
+   Legend picker modal
+   ============================================================ */
+.modal{position:fixed;inset:0;z-index:60;background:rgba(4,7,16,.86);backdrop-filter:blur(7px);
+  display:none;flex-direction:column;padding:16px}
+.modal.on{display:flex}
+.modal .head{display:flex;gap:12px;align-items:center;max-width:1080px;width:100%;margin:0 auto 12px}
+.modal h3{font-size:19px;letter-spacing:1.5px;color:var(--gold);flex:none}
+#search{
+  flex:1;min-width:0;padding:13px 15px;border:0;background:rgba(255,255,255,.07);
+  box-shadow:inset 0 0 0 1px var(--line);color:var(--ink);font:inherit;font-size:16px;
+}
+#search::placeholder{color:var(--ink-faint)}
+#search:focus{outline:0;box-shadow:inset 0 0 0 1px var(--gold)}
+.x{background:rgba(255,255,255,.07);box-shadow:inset 0 0 0 1px var(--line);color:var(--ink);
+  border:0;cursor:pointer;font-size:22px;line-height:1;padding:11px 15px;flex:none}
+.x:hover{background:var(--red-deep)}
+.grid{max-width:1080px;width:100%;margin:0 auto;overflow-y:auto;flex:1;
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:10px;padding:2px 2px 20px;align-content:start}
+.lg{background:rgba(255,255,255,.04);box-shadow:inset 0 0 0 1px var(--line);border:0;cursor:pointer;
+  padding:6px;color:var(--ink);transition:.13s;display:flex;flex-direction:column;gap:5px}
+.lg:hover{box-shadow:inset 0 0 0 2px var(--gold);transform:translateY(-3px);background:rgba(255,194,71,.1)}
+.lg .nm{font-size:10.5px;font-weight:700;text-align:center;line-height:1.2;letter-spacing:.2px}
+.lg .tag{font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--gold);font-weight:700}
+.groupname{grid-column:1/-1;font-family:var(--display);font-size:12px;letter-spacing:2.2px;
+  color:var(--ink-faint);margin:6px 0 -2px}
+
+/* ============================================================
+   Stats
+   ============================================================ */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(158px,1fr));gap:12px;margin-bottom:16px}
+.kpi{padding:15px 16px;background:linear-gradient(160deg,var(--panel-2),var(--panel));
+  box-shadow:inset 0 0 0 1px var(--line),var(--shadow)}
+.kpi .k{font-size:10.5px;letter-spacing:1.8px;text-transform:uppercase;color:var(--ink-faint);font-weight:700}
+.kpi .v{font-family:var(--display);font-size:34px;line-height:1.12;margin-top:5px}
+.kpi .n{font-size:11.5px;color:var(--ink-faint);margin-top:2px}
+.v.good{color:var(--green)} .v.bad{color:var(--red)} .v.gold{color:var(--gold)}
+
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px}
+.card h3{font-size:15px;letter-spacing:1.7px;color:var(--gold);margin-bottom:3px}
+.card .hint{font-size:11.5px;color:var(--ink-faint);margin-bottom:12px}
+
+.row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.05)}
+.row:last-child{border-bottom:0}
+.row .ports{display:flex;gap:4px;flex:none}
+.row .name{flex:1;min-width:0;font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .wl{font-size:11px;color:var(--ink-faint);flex:none;font-variant-numeric:tabular-nums}
+.row .pct{font-family:var(--display);font-size:16px;flex:none;width:52px;text-align:right;font-variant-numeric:tabular-nums}
+.bar{height:4px;background:rgba(255,255,255,.08);margin-top:5px;overflow:hidden}
+.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--gold-deep),var(--gold))}
+.bar.g i{background:linear-gradient(90deg,#189d5e,var(--green))}
+.bar.r i{background:linear-gradient(90deg,var(--red-deep),var(--red))}
+.rowwrap{padding:8px 0;border-bottom:1px solid rgba(255,255,255,.05)}
+.rowwrap:last-child{border-bottom:0}
+.rowwrap .row{padding:0;border:0}
+
+.empty{color:var(--ink-faint);font-size:13px;padding:14px 0;text-align:center;font-style:italic}
+
+/* Better-player duel ------------------------------------------- */
+.duel{display:grid;grid-template-columns:1fr auto 1fr;gap:14px;align-items:center;margin:6px 0 12px}
+.duel .side{text-align:center}
+.duel .pn{font-family:var(--display);font-size:17px;letter-spacing:1.2px}
+.duel .big{font-family:var(--display);font-size:40px;line-height:1.1}
+.duel .cap{font-size:10.5px;letter-spacing:1.4px;text-transform:uppercase;color:var(--ink-faint)}
+.duel .vs{font-family:var(--display);font-size:15px;color:var(--gold);letter-spacing:1.5px}
+.verdict{background:rgba(255,194,71,.10);box-shadow:inset 0 0 0 1px rgba(255,194,71,.28);
+  padding:11px 13px;font-size:13px;line-height:1.5}
+.verdict b{color:var(--gold)}
+
+.filters{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px;font-size:12px;color:var(--ink-faint)}
+.chip{padding:6px 13px;border:0;cursor:pointer;background:rgba(255,255,255,.05);
+  box-shadow:inset 0 0 0 1px var(--line);color:var(--ink-dim);font:inherit;font-weight:600;font-size:12px}
+.chip.on{background:var(--gold);color:#241703}
+
+/* ============================================================
+   History
+   ============================================================ */
+.match{display:flex;align-items:center;gap:12px;padding:11px 13px;margin-bottom:8px;
+  background:linear-gradient(160deg,var(--panel-2),var(--panel));box-shadow:inset 0 0 0 1px var(--line)}
+.match.w{box-shadow:inset 0 0 0 1px var(--line),inset 4px 0 0 var(--green)}
+.match.l{box-shadow:inset 0 0 0 1px var(--line),inset 4px 0 0 var(--red)}
+.match .side{display:flex;gap:4px;flex:none}
+.match .sc{font-family:var(--display);font-size:22px;flex:none;min-width:66px;text-align:center;font-variant-numeric:tabular-nums}
+.match .sc.w{color:var(--green)} .match .sc.l{color:var(--red)}
+.match .meta{flex:1;min-width:0;font-size:11px;color:var(--ink-faint);line-height:1.4}
+.del{background:transparent;border:0;color:var(--ink-faint);cursor:pointer;font-size:17px;padding:5px 9px;flex:none}
+.del:hover{color:var(--red)}
+
+/* Data / settings ---------------------------------------------- */
+.tools{display:flex;gap:9px;flex-wrap:wrap;margin-top:14px}
+.btn{padding:11px 17px;border:0;cursor:pointer;background:rgba(255,255,255,.06);
+  box-shadow:inset 0 0 0 1px var(--line);color:var(--ink);font:inherit;font-weight:600;font-size:13px;transition:.15s}
+.btn:hover{background:rgba(255,255,255,.12)}
+.btn.danger:hover{background:var(--red-deep)}
+.field{display:flex;gap:9px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
+.field label{font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--ink-faint);font-weight:700;min-width:112px}
+.field input{padding:10px 13px;border:0;background:rgba(0,0,0,.34);box-shadow:inset 0 0 0 1px var(--line);
+  color:var(--ink);font:inherit;font-size:15px;max-width:210px}
+.field input:focus{outline:0;box-shadow:inset 0 0 0 1px var(--gold)}
+
+.toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,180%);z-index:80;
+  background:linear-gradient(180deg,var(--gold),var(--gold-deep));color:#241703;
+  padding:13px 26px;font-family:var(--display);font-size:16px;letter-spacing:1.6px;text-transform:uppercase;
+  box-shadow:0 12px 30px rgba(0,0,0,.5);pointer-events:none;opacity:0;visibility:hidden;
+  transition:transform .3s cubic-bezier(.2,1.3,.4,1),opacity .2s,visibility .3s}
+.toast.on{transform:translate(-50%,0);opacity:1;visibility:visible}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="crest">2v2</div>
+    <div class="title">
+      <h1>Brawl Ledger</h1>
+      <div class="sub" id="subtitle">2v2 performance tracker</div>
+    </div>
+    <div class="spacer"></div>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab on cut-sm" data-view="log"><span>Log Match</span></button>
+    <button class="tab cut-sm" data-view="stats"><span>Stats</span></button>
+    <button class="tab cut-sm" data-view="history"><span>History</span></button>
+    <button class="tab cut-sm" data-view="data"><span>Data</span></button>
+  </nav>
+
+  <!-- ========================= LOG ========================= -->
+  <section class="view on" id="view-log">
+    <div class="teams">
+      <div class="team us cut">
+        <h2>Your Team</h2>
+        <div class="slots">
+          <button class="slot cut-sm" data-slot="p1"></button>
+          <button class="slot cut-sm" data-slot="p2"></button>
+        </div>
+      </div>
+      <div class="team them cut">
+        <h2>Enemy Team</h2>
+        <div class="slots">
+          <button class="slot cut-sm" data-slot="e1"></button>
+          <button class="slot cut-sm" data-slot="e2"></button>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel cut" style="margin-top:14px">
+      <div class="block" style="margin-top:0">
+        <div class="lbl">Result — stocks left by the winning team</div>
+        <div class="scorerow" id="scorebtns"></div>
+      </div>
+      <div class="block" id="splitblock" hidden>
+        <div class="lbl" id="splitlbl">Who lost the stocks?</div>
+        <div class="splitrow" id="splitbtns"></div>
+      </div>
+      <button class="save cut-sm" id="save" disabled>Save Match</button>
+    </div>
+  </section>
+
+  <!-- ========================= STATS ========================= -->
+  <section class="view" id="view-stats">
+    <div id="statsbody"></div>
+  </section>
+
+  <!-- ========================= HISTORY ========================= -->
+  <section class="view" id="view-history">
+    <div id="historybody"></div>
+  </section>
+
+  <!-- ========================= DATA ========================= -->
+  <section class="view" id="view-data">
+    <div class="panel cut">
+      <h3 style="font-size:15px;letter-spacing:1.7px;color:var(--gold)">Players</h3>
+      <div class="hint" style="font-size:11.5px;color:var(--ink-faint);margin:4px 0 12px">
+        Names used across the app. Slot 1 is always the left-hand player.
+      </div>
+      <div class="field"><label for="np1">Player 1</label><input id="np1" maxlength="18"></div>
+      <div class="field"><label for="np2">Player 2</label><input id="np2" maxlength="18"></div>
+      <div class="field"><label for="nstocks">Stocks / team</label><input id="nstocks" type="number" min="1" max="9" style="max-width:90px"></div>
+      <button class="btn cut-sm" id="savesettings">Save settings</button>
+    </div>
+
+    <div class="panel cut" style="margin-top:14px">
+      <h3 style="font-size:15px;letter-spacing:1.7px;color:var(--gold)">Backup</h3>
+      <div class="hint" style="font-size:11.5px;color:var(--ink-faint);margin:4px 0 12px">
+        Matches live in this browser's local storage only. Export regularly, and import on the other
+        phone to merge both of your logs (duplicate match IDs are skipped).
+      </div>
+      <div class="tools">
+        <button class="btn cut-sm" id="export">⬇ Export JSON</button>
+        <button class="btn cut-sm" id="import">⬆ Import / merge</button>
+        <button class="btn cut-sm" id="copy">📋 Copy to clipboard</button>
+        <button class="btn cut-sm danger" id="wipe">🗑 Erase everything</button>
+      </div>
+      <input type="file" id="file" accept="application/json,.json" hidden>
+    </div>
+  </section>
+</div>
+
+<!-- Legend picker -->
+<div class="modal" id="modal">
+  <div class="head">
+    <h3 id="modaltitle">Pick legend</h3>
+    <input id="search" type="search" placeholder="Search legends…" autocomplete="off" spellcheck="false">
+    <button class="x cut-sm" id="closemodal" aria-label="Close">✕</button>
+  </div>
+  <div class="grid" id="grid"></div>
+</div>
+
+<div class="toast cut-sm" id="toast"></div>
+
+<script>
+"use strict";
+
+/* ============================================================
+   Legend roster (70) — k = local asset key, r = wiki source file
+   ============================================================ */
+const LEGENDS = [
+{n:"Bödvar",k:"bodvar",r:"Portrait_Bodvar.png"},
+{n:"Cassidy",k:"cassidy",r:"Portrait_Cassidy.png"},
+{n:"Orion",k:"orion",r:"Portrait_Orion.png"},
+{n:"Lord Vraxx",k:"lordvraxx",r:"Portrait_LordVraxx.png"},
+{n:"Gnash",k:"gnash",r:"Portrait_Gnash.png"},
+{n:"Queen Nai",k:"queennai",r:"Portrait_QueenNai.png"},
+{n:"Hattori",k:"hattori",r:"Portrait_Hattori.png"},
+{n:"Thatch",k:"thatch",r:"Portrait_Thatch.png"},
+{n:"Ada",k:"ada",r:"Portrait_Ada.png"},
+{n:"Scarlet",k:"scarlet",r:"Portrait_Scarlet.png"},
+{n:"Sentinel",k:"sentinel",r:"Portrait_Sentinel.png"},
+{n:"Sir Roland",k:"sirroland",r:"Portrait_SirRoland.png"},
+{n:"Lucien",k:"lucien",r:"Portrait_Lucien.png"},
+{n:"Teros",k:"teros",r:"Portrait_Teros.png"},
+{n:"Brynn",k:"brynn",r:"Portrait_Brynn.png"},
+{n:"Asuri",k:"asuri",r:"Portrait_Asuri.png"},
+{n:"Barraza",k:"barraza",r:"Portrait_Barraza.png"},
+{n:"Ember",k:"ember",r:"Portrait_Ember.png"},
+{n:"Azoth",k:"azoth",r:"Portrait_Azoth.png"},
+{n:"Koji",k:"koji",r:"Portrait_Koji.png"},
+{n:"Ulgrim",k:"ulgrim",r:"Portrait_Ulgrim.png"},
+{n:"Diana",k:"diana",r:"Portrait_Diana.png"},
+{n:"Jhala",k:"jhala",r:"Portrait_Jhala.png"},
+{n:"Kor",k:"kor",r:"Portrait_Kor.png"},
+{n:"Wu Shang",k:"wushang",r:"Portrait_WuShang.png"},
+{n:"Val",k:"val",r:"Portrait_Val.png"},
+{n:"Ragnir",k:"ragnir",r:"Portrait_Ragnir.png"},
+{n:"Cross",k:"cross",r:"Portrait_Cross.png"},
+{n:"Mirage",k:"mirage",r:"Portrait_Mirage.png"},
+{n:"Nix",k:"nix",r:"Portrait_Nix.png"},
+{n:"Mordex",k:"mordex",r:"Portrait_Mordex.png"},
+{n:"Yumiko",k:"yumiko",r:"Portrait_Yumiko.png"},
+{n:"Artemis",k:"artemis",r:"Portrait_Artemis.png"},
+{n:"Caspian",k:"caspian",r:"Portrait_Caspian.png"},
+{n:"Sidra",k:"sidra",r:"Portrait_Sidra.png"},
+{n:"Xull",k:"xull",r:"Portrait_Xull.png"},
+{n:"Kaya",k:"kaya",r:"Portrait_Kaya.png"},
+{n:"Isaiah",k:"isaiah",r:"Portrait_Isaiah.png"},
+{n:"Jiro",k:"jiro",r:"Portrait_Jiro.png"},
+{n:"Lin Fei",k:"linfei",r:"Portrait_LinFei.png"},
+{n:"Zariel",k:"zariel",r:"Portrait_Zariel.png"},
+{n:"Rayman",k:"rayman",r:"Portrait_Rayman.png"},
+{n:"Dusk",k:"dusk",r:"Portrait_Dusk.png"},
+{n:"Fait",k:"fait",r:"Portrait_Fait.png"},
+{n:"Thor",k:"thor",r:"Portrait_Thor.png"},
+{n:"Petra",k:"petra",r:"Portrait_Petra.png"},
+{n:"Vector",k:"vector",r:"Portrait_Vector.png"},
+{n:"Volkov",k:"volkov",r:"Portrait_Volkov.png"},
+{n:"Onyx",k:"onyx",r:"Portrait_Onyx.png"},
+{n:"Jaeyun",k:"jaeyun",r:"Portrait_Jaeyun.png"},
+{n:"Mako",k:"mako",r:"Portrait_Mako.png"},
+{n:"Magyar",k:"magyar",r:"Portrait_Magyar.png"},
+{n:"Reno",k:"reno",r:"Portrait_Reno.png"},
+{n:"Munin",k:"munin",r:"Portrait_Munin.png"},
+{n:"Arcadia",k:"arcadia",r:"Portrait_Arcadia.png"},
+{n:"Ezio",k:"ezio",r:"Portrait_Ezio.png"},
+{n:"Tezca",k:"tezca",r:"Portrait_Tezca.png"},
+{n:"Thea",k:"thea",r:"Portrait_Thea.png"},
+{n:"Red Raptor",k:"redraptor",r:"Portrait_RedRaptor.png"},
+{n:"Loki",k:"loki",r:"Portrait_Loki.png"},
+{n:"Seven",k:"seven",r:"Portrait_Seven.png"},
+{n:"Vivi",k:"vivi",r:"Portrait_Vivi.png"},
+{n:"Imugi",k:"imugi",r:"Portrait_Imugi.png"},
+{n:"King Zuva",k:"kingzuva",r:"Portrait_KingZuva.png"},
+{n:"Priya",k:"priya",r:"Portrait_Priya.png"},
+{n:"Ransom",k:"ransom",r:"Portrait_Ransom.png"},
+{n:"Lady Vera",k:"ladyvera",r:"Portrait_LadyVera.png"},
+{n:"Rupture",k:"rupture",r:"Portrait_Rupture.png"},
+{n:"Aurus",k:"aurus",r:"Portrait_Aurus.png"},
+{n:"Qinghua & Baobao",k:"qinghuabaobao",r:"Qinghua_%26_Baobao.jpeg"}
+];
+const BY_KEY = Object.fromEntries(LEGENDS.map(l => [l.k, l]));
+const nameOf = k => (BY_KEY[k] || {}).n || k;
+
+/* ============================================================
+   Persistence
+   ============================================================ */
+const KEY = "brawlhalla-2v2-tracker/v1";
+const DEFAULTS = { v:1, players:{ p1:"Colin", p2:"Yesmine" }, stocks:3, matches:[] };
+
+function load(){
+  try{
+    const raw = localStorage.getItem(KEY);
+    if(!raw) return structuredClone(DEFAULTS);
+    const d = JSON.parse(raw);
+    return { ...structuredClone(DEFAULTS), ...d,
+             players:{ ...DEFAULTS.players, ...(d.players||{}) },
+             matches: Array.isArray(d.matches) ? d.matches : [] };
+  }catch(e){
+    console.error("Could not read saved data", e);
+    return structuredClone(DEFAULTS);
+  }
+}
+let S = load();
+function save(){
+  try{ localStorage.setItem(KEY, JSON.stringify(S)); }
+  catch(e){ toast("Save failed — storage full?"); console.error(e); }
+}
+
+/* ============================================================
+   Small helpers
+   ============================================================ */
+const $  = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const pct = (n,d) => d ? Math.round(n/d*100) : 0;
+const hue = k => { let h=0; for(const c of k) h=(h*31+c.charCodeAt(0))%360; return h; };
+const initials = n => n.replace(/[^A-Za-zÀ-ÿ ]/g,"").split(/\s+/).filter(Boolean).slice(0,2)
+                       .map(w=>w[0]).join("").toUpperCase() || "?";
+
+/** Portrait markup. Falls back to a coloured crest if the image file is missing. */
+function portrait(k, cls=""){
+  const l = BY_KEY[k];
+  if(!l) return `<div class="port blank ${cls}"><div class="crestfall">+</div></div>`;
+  return `<div class="port ${cls}" style="--h:${hue(l.k)}" title="${esc(l.n)}">
+    <div class="crestfall">${esc(initials(l.n))}</div>
+    <img src="assets/legends/${l.k}.png" alt="${esc(l.n)}" loading="lazy" onerror="this.hidden=true">
+  </div>`;
+}
+
+let toastTimer;
+function toast(msg){
+  const t = $("#toast");
+  t.textContent = msg; t.classList.add("on");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.classList.remove("on"), 2200);
+}
+
+/* ============================================================
+   Tabs
+   ============================================================ */
+const VIEWS = ["log","stats","history","data"];
+
+function showView(view, scroll = true){
+  if(!VIEWS.includes(view)) view = "log";
+  $$(".tab").forEach(x => x.classList.toggle("on", x.dataset.view === view));
+  $$(".view").forEach(v => v.classList.toggle("on", v.id === "view-" + view));
+  if(view === "stats")   renderStats();
+  if(view === "history") renderHistory();
+  if(view === "data")    fillSettings();
+  if(scroll) window.scrollTo({ top:0, behavior:"smooth" });
+}
+
+$$(".tab").forEach(b => b.addEventListener("click", () => {
+  location.hash = b.dataset.view;          // deep-linkable: index.html#stats
+  showView(b.dataset.view);
+}));
+window.addEventListener("hashchange", () => showView(location.hash.slice(1)));
+
+/* ============================================================
+   Draft match state
+   ============================================================ */
+let draft = { p1:null, p2:null, e1:null, e2:null, us:null, them:null, d1:null, d2:null };
+
+const SLOT_LABEL = () => ({
+  p1: S.players.p1, p2: S.players.p2, e1: "Enemy 1", e2: "Enemy 2"
+});
+
+function renderSlots(){
+  const labels = SLOT_LABEL();
+  $$(".slot").forEach(btn => {
+    const id = btn.dataset.slot, k = draft[id];
+    btn.classList.toggle("empty", !k);
+    btn.innerHTML = `<span class="who">${esc(labels[id])}</span>
+      ${portrait(k)}
+      <span class="pick">${k ? esc(nameOf(k)) : "Tap to pick"}</span>`;
+  });
+}
+
+/** Recently used legends, most recent first. */
+function recentKeys(){
+  const seen = [];
+  for(const m of [...S.matches].reverse())
+    for(const k of [m.p1, m.p2, m.e1, m.e2])
+      if(k && !seen.includes(k)) seen.push(k);
+  return seen.slice(0, 12);
+}
+
+/* ---- score buttons ---- */
+function renderScore(){
+  const max = S.stocks, out = [];
+  for(let s = max; s >= 1; s--)
+    out.push(`<button class="sbtn win cut-sm" data-us="${s}" data-them="0"><span>${s}–0<small>Win</small></span></button>`);
+  for(let s = 1; s <= max; s++)
+    out.push(`<button class="sbtn loss cut-sm" data-us="0" data-them="${s}"><span>0–${s}<small>Loss</small></span></button>`);
+  $("#scorebtns").innerHTML = out.join("");
+  $$("#scorebtns .sbtn").forEach(b => b.addEventListener("click", () => {
+    draft.us = +b.dataset.us; draft.them = +b.dataset.them;
+    draft.d1 = draft.d2 = null;
+    $$("#scorebtns .sbtn").forEach(x => x.classList.toggle("on", x === b));
+    renderSplit(); refreshSave();
+  }));
+}
+
+/** Our lost stocks are always (max - our remaining); ask how they split. */
+function renderSplit(){
+  const block = $("#splitblock");
+  if(draft.us === null){ block.hidden = true; return; }
+  const lost = S.stocks - draft.us;
+  if(lost === 0){ block.hidden = true; draft.d1 = draft.d2 = 0; return; }
+  block.hidden = false;
+  $("#splitlbl").textContent = `Who lost the ${lost} stock${lost>1?"s":""}? (optional)`;
+  const out = [];
+  for(let a = lost; a >= 0; a--)
+    out.push(`<button class="split cut-sm" data-a="${a}" data-b="${lost-a}">${a} – ${lost-a}
+      <small>${esc(S.players.p1)} – ${esc(S.players.p2)}</small></button>`);
+  $("#splitbtns").innerHTML = out.join("");
+  $$("#splitbtns .split").forEach(b => b.addEventListener("click", () => {
+    const on = b.classList.contains("on");
+    $$("#splitbtns .split").forEach(x => x.classList.remove("on"));
+    if(on){ draft.d1 = draft.d2 = null; }             // tap again to clear
+    else { b.classList.add("on"); draft.d1 = +b.dataset.a; draft.d2 = +b.dataset.b; }
+  }));
+}
+
+function refreshSave(){
+  const ok = draft.p1 && draft.p2 && draft.e1 && draft.e2 && draft.us !== null;
+  $("#save").disabled = !ok;
+}
+
+/* ============================================================
+   Legend picker modal
+   ============================================================ */
+let pickingSlot = null;
+
+function openPicker(slot){
+  pickingSlot = slot;
+  $("#modaltitle").textContent = SLOT_LABEL()[slot];
+  $("#search").value = "";
+  renderGrid("");
+  $("#modal").classList.add("on");
+  setTimeout(()=>$("#search").focus(), 60);
+}
+function closePicker(){ $("#modal").classList.remove("on"); pickingSlot = null; }
+
+function renderGrid(q){
+  q = q.trim().toLowerCase();
+  const tile = (l, tag) => `<button class="lg cut-sm" data-k="${l.k}">
+      ${portrait(l.k)}<span class="nm">${esc(l.n)}</span>${tag ? `<span class="tag">${tag}</span>` : ""}</button>`;
+  let html = "";
+  if(!q){
+    const rec = recentKeys();
+    if(rec.length){
+      html += `<div class="groupname">Recently used</div>`;
+      html += rec.map(k => BY_KEY[k] ? tile(BY_KEY[k], "") : "").join("");
+      html += `<div class="groupname">All legends</div>`;
+    }
+    html += LEGENDS.map(l => tile(l, "")).join("");
+  } else {
+    const hits = LEGENDS.filter(l => l.n.toLowerCase().includes(q) || l.k.includes(q));
+    html = hits.length ? hits.map(l => tile(l, "")).join("")
+                       : `<div class="empty" style="grid-column:1/-1">No legend matches “${esc(q)}”.</div>`;
+  }
+  $("#grid").innerHTML = html;
+  $$("#grid .lg").forEach(b => b.addEventListener("click", () => {
+    draft[pickingSlot] = b.dataset.k;
+    closePicker(); renderSlots(); refreshSave();
+  }));
+}
+
+$$(".slot").forEach(b => b.addEventListener("click", () => openPicker(b.dataset.slot)));
+$("#closemodal").addEventListener("click", closePicker);
+$("#search").addEventListener("input", e => renderGrid(e.target.value));
+$("#modal").addEventListener("click", e => { if(e.target.id === "modal") closePicker(); });
+document.addEventListener("keydown", e => { if(e.key === "Escape" && pickingSlot) closePicker(); });
+
+/* ============================================================
+   Saving a match
+   ============================================================ */
+$("#save").addEventListener("click", () => {
+  if($("#save").disabled) return;
+  S.matches.push({
+    id: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random()),
+    ts: Date.now(),
+    p1: draft.p1, p2: draft.p2, e1: draft.e1, e2: draft.e2,
+    us: draft.us, them: draft.them,
+    d1: draft.d1, d2: draft.d2
+  });
+  save();
+  const won = draft.us > draft.them;
+  toast(won ? "Win logged ⚔" : "Loss logged");
+  // Keep the legends selected — you usually replay the same comp.
+  draft.us = draft.them = null; draft.d1 = draft.d2 = null;
+  $$("#scorebtns .sbtn").forEach(x => x.classList.remove("on"));
+  $("#splitblock").hidden = true;
+  refreshSave(); updateSubtitle();
+});
+
+function updateSubtitle(){
+  const n = S.matches.length;
+  if(!n){ $("#subtitle").textContent = "2v2 performance tracker"; return; }
+  const w = S.matches.filter(m => m.us > m.them).length;
+  $("#subtitle").textContent = `${n} match${n>1?"es":""} · ${pct(w,n)}% win rate`;
+}
+
+/* ============================================================
+   Stats
+   ============================================================ */
+let minGames = 3;
+
+const isWin = m => m.us > m.them;
+
+function tally(matches, keyFn){
+  const map = new Map();
+  for(const m of matches){
+    for(const key of [].concat(keyFn(m))){
+      if(key == null) continue;
+      const e = map.get(key) || { key, w:0, l:0, diff:0 };
+      isWin(m) ? e.w++ : e.l++;
+      e.diff += m.us - m.them;
+      map.set(key, e);
+    }
+  }
+  return [...map.values()].map(e => ({ ...e, n: e.w + e.l, rate: pct(e.w, e.w + e.l) }));
+}
+
+/** dir=-1 ranks best-first, dir=1 worst-first; bigger samples always win ties. */
+function rank(rows, min, dir = -1){
+  return rows.filter(r => r.n >= min)
+             .sort((a,b) => dir * (a.rate - b.rate) || b.n - a.n);
+}
+
+function rowHTML(portsHTML, label, r){
+  const cls = r.rate >= 55 ? "g" : r.rate <= 45 ? "r" : "";
+  return `<div class="rowwrap">
+    <div class="row">
+      <div class="ports">${portsHTML}</div>
+      <div class="name">${label}</div>
+      <div class="wl">${r.w}W ${r.l}L</div>
+      <div class="pct">${r.rate}%</div>
+    </div>
+    <div class="bar ${cls}"><i style="width:${r.rate}%"></i></div>
+  </div>`;
+}
+
+function listCard(title, hint, rows, emptyMsg){
+  const body = rows.length ? rows.slice(0, 8).join("")
+                           : `<div class="empty">${emptyMsg || `Nothing with ${minGames}+ matches yet.`}</div>`;
+  return `<div class="panel cut card"><h3>${title}</h3><div class="hint">${hint}</div>${body}</div>`;
+}
+
+function renderStats(){
+  const M = S.matches, box = $("#statsbody");
+  if(!M.length){
+    box.innerHTML = `<div class="panel cut"><div class="empty">
+      No matches logged yet. Head to <b style="color:var(--gold)">Log Match</b> and record your first game.
+    </div></div>`;
+    return;
+  }
+
+  const n = M.length, w = M.filter(isWin).length;
+  const diff = M.reduce((a,m) => a + (m.us - m.them), 0) / n;
+
+  // current streak, from the most recent match backwards
+  let streak = 0, streakWin = isWin(M[M.length-1]);
+  for(let i = M.length-1; i >= 0; i--){ if(isWin(M[i]) === streakWin) streak++; else break; }
+
+  const p1 = esc(S.players.p1), p2 = esc(S.players.p2);
+
+  const kpis = `<div class="kpis">
+    <div class="kpi cut-sm"><div class="k">Matches</div><div class="v">${n}</div></div>
+    <div class="kpi cut-sm"><div class="k">Win rate</div>
+      <div class="v ${w/n>=.5?"good":"bad"}">${pct(w,n)}%</div><div class="n">${w}W · ${n-w}L</div></div>
+    <div class="kpi cut-sm"><div class="k">Avg stock diff</div>
+      <div class="v ${diff>=0?"good":"bad"}">${diff>=0?"+":""}${diff.toFixed(2)}</div>
+      <div class="n">how convincing the wins are</div></div>
+    <div class="kpi cut-sm"><div class="k">Current streak</div>
+      <div class="v ${streakWin?"good":"bad"}">${streak}${streakWin?"W":"L"}</div>
+      <div class="n">${streakWin?"on a roll":"time for a break"}</div></div>
+  </div>`;
+
+  const filters = `<div class="filters">
+    <span>Minimum matches:</span>
+    ${[1,3,5,10].map(v => `<button class="chip cut-sm ${v===minGames?"on":""}" data-min="${v}">${v}+</button>`).join("")}
+    <span style="margin-left:auto">Ranked by win rate, ties broken by sample size.</span>
+  </div>`;
+
+  // --- our comps (who plays what matters, so the pair is ordered) ---
+  const comps = rank(tally(M, m => `${m.p1}|${m.p2}`), minGames).map(r => {
+    const [a,b] = r.key.split("|");
+    return rowHTML(portrait(a,"sm") + portrait(b,"sm"), `${esc(nameOf(a))} <span style="color:var(--ink-faint)">+</span> ${esc(nameOf(b))}`, r);
+  });
+
+  // --- each player's own legends ---
+  const legs1 = rank(tally(M, m => m.p1), minGames).map(r =>
+    rowHTML(portrait(r.key,"sm"), esc(nameOf(r.key)), r));
+  const legs2 = rank(tally(M, m => m.p2), minGames).map(r =>
+    rowHTML(portrait(r.key,"sm"), esc(nameOf(r.key)), r));
+
+  // --- enemy legends: count each match once per distinct enemy legend.
+  // Split at 50% so the two cards never show the same legend twice. ---
+  const enemyRows = tally(M, m => [...new Set([m.e1, m.e2])]);
+  const asLegend = r => rowHTML(portrait(r.key,"sm"), esc(nameOf(r.key)), r);
+  const easiest = rank(enemyRows, minGames, -1).filter(r => r.rate > 50).map(asLegend);
+  const hardest = rank(enemyRows, minGames,  1).filter(r => r.rate < 50).map(asLegend);
+
+  // --- enemy comps (unordered pair) you have a losing record against ---
+  const ecomps = rank(tally(M, m => [m.e1, m.e2].sort().join("|")), minGames, 1)
+    .filter(r => r.rate < 50).map(r => {
+      const [a,b] = r.key.split("|");
+      return rowHTML(portrait(a,"sm") + portrait(b,"sm"), `${esc(nameOf(a))} <span style="color:var(--ink-faint)">+</span> ${esc(nameOf(b))}`, r);
+    });
+
+  box.innerHTML = kpis + filters + `<div class="cards">
+    ${listCard("Best duos", `Your legend pairings — ${p1} first, ${p2} second.`, comps)}
+    ${betterPlayerCard(M)}
+    ${listCard(`${p1}'s legends`, "Win rate of the team when they pick each legend.", legs1)}
+    ${listCard(`${p2}'s legends`, "Win rate of the team when they pick each legend.", legs2)}
+    ${listCard("Favourite prey", "Enemy legends you have a winning record against.",
+        easiest, `No enemy legend is above 50% with ${minGames}+ matches yet.`)}
+    ${listCard("Nemeses", "Enemy legends that beat you more often than not — practise against these.",
+        hardest, `Nothing below 50% with ${minGames}+ matches. Enjoy it while it lasts.`)}
+    ${listCard("Toughest enemy duos", "Enemy pairings with a winning record against you.",
+        ecomps, `No enemy duo is beating you over ${minGames}+ matches.`)}
+  </div>`;
+
+  $$("#statsbody .chip").forEach(c => c.addEventListener("click", () => {
+    minGames = +c.dataset.min; renderStats();
+  }));
+}
+
+/**
+ * "Better player" — the only per-player signal we have is which of you lost
+ * each stock, so this is deliberately built on that and says so.
+ */
+function betterPlayerCard(M){
+  const rec = M.filter(m => m.d1 != null && m.d2 != null);
+  const p1 = esc(S.players.p1), p2 = esc(S.players.p2);
+  if(rec.length < 3){
+    return `<div class="panel cut card"><h3>Better player</h3>
+      <div class="hint">Needs the optional “who lost the stocks?” split.</div>
+      <div class="empty">Logged on ${rec.length} of ${M.length} matches — record a few more to settle this.</div>
+    </div>`;
+  }
+  const s1 = rec.reduce((a,m)=>a+m.d1, 0), s2 = rec.reduce((a,m)=>a+m.d2, 0);
+  const a1 = s1/rec.length, a2 = s2/rec.length, total = s1 + s2;
+  const share1 = pct(s1, total), share2 = 100 - share1;
+  const gap = Math.abs(a1 - a2);
+
+  const even = gap < 0.15;
+  let verdict;
+  if(total === 0) verdict = `Nobody has died yet. Suspicious.`;
+  else if(even) verdict = `Dead even — <b>${gap.toFixed(2)}</b> stocks per match between you. Blame the enemy team.`;
+  else {
+    const better = a1 < a2 ? p1 : p2, worse = a1 < a2 ? p2 : p1;
+    verdict = `<b>${better}</b> is the steadier half, dying <b>${gap.toFixed(2)}</b> fewer stocks per match than ${worse}.`;
+  }
+  // Don't colour a winner when the gap isn't meaningful.
+  const c1 = even ? "gold" : (a1 < a2 ? "good" : "bad");
+  const c2 = even ? "gold" : (a2 < a1 ? "good" : "bad");
+  const caveat = rec.length < 15
+    ? `<div class="hint" style="margin:10px 0 0">Only ${rec.length} matches — treat this as a rumour, not a verdict.</div>` : "";
+
+  return `<div class="panel cut card"><h3>Better player</h3>
+    <div class="hint">Stocks lost per match, across ${rec.length} matches with a split recorded. Lower is better.</div>
+    <div class="duel">
+      <div class="side"><div class="pn">${p1}</div>
+        <div class="big v ${c1}">${a1.toFixed(2)}</div>
+        <div class="cap">${share1}% of losses</div></div>
+      <div class="vs">VS</div>
+      <div class="side"><div class="pn">${p2}</div>
+        <div class="big v ${c2}">${a2.toFixed(2)}</div>
+        <div class="cap">${share2}% of losses</div></div>
+    </div>
+    <div class="bar" style="height:8px"><i style="width:${share1}%;background:linear-gradient(90deg,var(--blue-deep),var(--blue))"></i></div>
+    <div class="verdict cut-sm" style="margin-top:12px">${verdict}</div>${caveat}
+  </div>`;
+}
+
+/* ============================================================
+   History
+   ============================================================ */
+function renderHistory(){
+  const box = $("#historybody");
+  if(!S.matches.length){
+    box.innerHTML = `<div class="panel cut"><div class="empty">No matches yet.</div></div>`;
+    return;
+  }
+  const fmt = ts => new Date(ts).toLocaleString(undefined,
+    { month:"short", day:"numeric", hour:"2-digit", minute:"2-digit" });
+
+  box.innerHTML = [...S.matches].reverse().map(m => {
+    const won = isWin(m);
+    const split = (m.d1 != null)
+      ? ` · stocks lost ${esc(S.players.p1)} ${m.d1} / ${esc(S.players.p2)} ${m.d2}` : "";
+    return `<div class="match cut-sm ${won?"w":"l"}">
+      <div class="side">${portrait(m.p1,"sm")}${portrait(m.p2,"sm")}</div>
+      <div class="sc ${won?"w":"l"}">${m.us}–${m.them}</div>
+      <div class="side">${portrait(m.e1,"sm")}${portrait(m.e2,"sm")}</div>
+      <div class="meta">${fmt(m.ts)}${split}</div>
+      <button class="del" data-id="${m.id}" title="Delete match">✕</button>
+    </div>`;
+  }).join("");
+
+  $$("#historybody .del").forEach(b => b.addEventListener("click", () => {
+    S.matches = S.matches.filter(m => m.id !== b.dataset.id);
+    save(); renderHistory(); updateSubtitle(); toast("Match deleted");
+  }));
+}
+
+/* ============================================================
+   Settings + backup
+   ============================================================ */
+function fillSettings(){
+  $("#np1").value = S.players.p1;
+  $("#np2").value = S.players.p2;
+  $("#nstocks").value = S.stocks;
+}
+$("#savesettings").addEventListener("click", () => {
+  S.players.p1 = $("#np1").value.trim() || "Player 1";
+  S.players.p2 = $("#np2").value.trim() || "Player 2";
+  const st = Math.max(1, Math.min(9, +$("#nstocks").value || 3));
+  S.stocks = st;
+  save(); fillSettings(); renderSlots(); renderScore(); renderSplit();
+  draft.us = draft.them = null; refreshSave();
+  toast("Settings saved");
+});
+
+function payload(){ return JSON.stringify(S, null, 2); }
+
+$("#export").addEventListener("click", () => {
+  const blob = new Blob([payload()], { type:"application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  const d = new Date().toISOString().slice(0,10);
+  a.href = url; a.download = `brawlhalla-2v2-${d}.json`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 1000);
+});
+
+$("#copy").addEventListener("click", async () => {
+  try{ await navigator.clipboard.writeText(payload()); toast("Copied to clipboard"); }
+  catch(e){ toast("Clipboard blocked — use Export"); }
+});
+
+$("#import").addEventListener("click", () => $("#file").click());
+$("#file").addEventListener("change", e => {
+  const f = e.target.files[0];
+  if(!f) return;
+  const rd = new FileReader();
+  rd.onload = () => {
+    try{
+      const d = JSON.parse(rd.result);
+      if(!Array.isArray(d.matches)) throw new Error("no matches array");
+      const have = new Set(S.matches.map(m => m.id));
+      const fresh = d.matches.filter(m => m && m.id && !have.has(m.id));
+      S.matches = [...S.matches, ...fresh].sort((a,b) => a.ts - b.ts);
+      save(); updateSubtitle(); renderHistory();
+      toast(`Merged ${fresh.length} new match${fresh.length===1?"":"es"}`);
+    }catch(err){
+      console.error(err); toast("That file isn't a valid backup");
+    }
+    e.target.value = "";
+  };
+  rd.readAsText(f);
+});
+
+$("#wipe").addEventListener("click", () => {
+  if(!confirm(`Delete all ${S.matches.length} matches permanently? Export first if you're unsure.`)) return;
+  S = structuredClone(DEFAULTS);
+  save(); renderSlots(); renderScore(); updateSubtitle(); fillSettings();
+  draft = { p1:null, p2:null, e1:null, e2:null, us:null, them:null, d1:null, d2:null };
+  refreshSave(); toast("Everything erased");
+});
+
+/* ============================================================
+   Boot
+   ============================================================ */
+renderSlots();
+renderScore();
+refreshSave();
+updateSubtitle();
+showView(location.hash.slice(1), false);
+</script>
+</body>
+</html>
