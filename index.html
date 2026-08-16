@@ -1062,15 +1062,23 @@ $("#wipe").addEventListener("click", () => {
 /* ============================================================
    Offline support
    ============================================================ */
-const SW_SUPPORTED = "serviceWorker" in navigator && location.protocol.startsWith("http");
+/* Browsers only expose navigator.serviceWorker in a secure context — https, or
+   localhost. Over a plain http:// LAN address it is simply absent, which is not
+   the same thing as "your browser can't do this". */
+const SECURE = window.isSecureContext;
+const SW_SUPPORTED = "serviceWorker" in navigator && SECURE;
 
 function setSwStatus(text){ const el = $("#swstatus"); if(el) el.textContent = text; }
 
 function refreshSwStatus(){
   if(!SW_SUPPORTED){
-    setSwStatus(location.protocol === "file:"
-      ? "Unavailable — open over http://, not file://"
-      : "Not supported by this browser");
+    if(location.protocol === "file:")
+      setSwStatus("Off — open the app over http://, not as a file://");
+    else if(!SECURE)
+      setSwStatus(`Off — offline storage needs https:// or localhost, and this page is `
+        + `plain http://${location.host}. Everything else works; it just won't survive losing wifi.`);
+    else
+      setSwStatus("Not supported by this browser");
     return;
   }
   navigator.serviceWorker.getRegistration().then(reg => {
