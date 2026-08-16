@@ -85,10 +85,36 @@ initials, so nothing breaks. You can also just drop your own square PNG at
 Portraits are Brawlhalla artwork © Blue Mammoth Games / Ubisoft, used here for a personal,
 non-commercial tracker. Don't ship this as a product.
 
+## Offline
+
+The app works with no signal. On first load a service worker stores `index.html`, the icon,
+the display font and all 70 portraits on the device — 74 files, about 3 MB — so it opens
+instantly and keeps working in airplane mode. **Data → Offline** shows how many files are
+stored.
+
+Caching is split by how often things change, so you never get stuck on a stale build:
+
+| | Strategy |
+|---|---|
+| `index.html`, navigations | **Network-first** — a new version lands as soon as you're online, cache is the fallback |
+| Portraits, icon, manifest | **Cache-first** — they never change, so never hit the network |
+| Google Fonts | **Cache-first**, own bucket, so the display font survives offline |
+
+The portrait list is derived from the `LEGENDS` array in `index.html` at install time, so
+adding a legend needs no edit to `sw.js`.
+
+If a new version ever refuses to appear, hit **Reset offline cache** in the Data tab (your
+matches are untouched), or bump `VERSION` in [`sw.js`](sw.js) to force every device to
+re-download.
+
+> During local development the service worker will serve cached files. `python3 -m http.server`
+> plus a hard reload is usually enough; otherwise use the reset button.
+
 ## Files
 
 ```
 index.html         the whole app — markup, styles and logic
+sw.js              service worker: offline support and precaching
 assets/legends/    70 legend portraits (240×240)
 fetch-legends.sh   downloads/refreshes portraits from the wiki
 manifest.json      makes it installable as a home-screen app
@@ -100,5 +126,4 @@ icon.svg           app icon
 - **Live sync between phones.** Export/import covers a duo. If manual merging gets old,
   a [Supabase](https://supabase.com) free-tier table plus ~40 lines of `fetch` would give
   you real-time sync at no cost.
-- **Offline support.** Add a service worker if you want it working without signal.
 - **Editing a saved match.** Delete it in History and re-log — it's faster than a form.

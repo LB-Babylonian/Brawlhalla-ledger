@@ -374,6 +374,16 @@ nav.tabs{display:flex;gap:8px;margin:0 0 18px;flex-wrap:wrap}
       </div>
       <input type="file" id="file" accept="application/json,.json" hidden>
     </div>
+
+    <div class="panel cut" style="margin-top:14px">
+      <h3 style="font-size:15px;letter-spacing:1.7px;color:var(--gold)">Offline</h3>
+      <div class="hint" style="font-size:11.5px;color:var(--ink-faint);margin:4px 0 12px">
+        The app and all 70 portraits are stored on your device, so it opens instantly and
+        keeps working with no signal. Reset this if a new version ever fails to appear.
+      </div>
+      <div class="field"><label>Status</label><span id="swstatus" style="font-size:13px">Checking…</span></div>
+      <div class="tools"><button class="btn cut-sm" id="swreset">↻ Reset offline cache</button></div>
+    </div>
   </section>
 </div>
 
@@ -903,6 +913,7 @@ function fillSettings(){
   $("#np1").value = S.players.p1;
   $("#np2").value = S.players.p2;
   $("#nstocks").value = S.stocks;
+  refreshSwStatus();
 }
 $("#savesettings").addEventListener("click", () => {
   S.players.p1 = $("#np1").value.trim() || "Player 1";
@@ -959,6 +970,58 @@ $("#wipe").addEventListener("click", () => {
   save(); renderSlots(); renderScore(); updateSubtitle(); fillSettings();
   draft = { p1:null, p2:null, e1:null, e2:null, us:null, them:null, d1:null, d2:null };
   refreshSave(); toast("Everything erased");
+});
+
+/* ============================================================
+   Offline support
+   ============================================================ */
+const SW_SUPPORTED = "serviceWorker" in navigator && location.protocol.startsWith("http");
+
+function setSwStatus(text){ const el = $("#swstatus"); if(el) el.textContent = text; }
+
+function refreshSwStatus(){
+  if(!SW_SUPPORTED){
+    setSwStatus(location.protocol === "file:"
+      ? "Unavailable — open over http://, not file://"
+      : "Not supported by this browser");
+    return;
+  }
+  navigator.serviceWorker.getRegistration().then(reg => {
+    if(!reg || !navigator.serviceWorker.controller){ setSwStatus("Not installed yet — reload once"); return; }
+    // Ask the worker how many entries it actually holds.
+    const ch = new MessageChannel();
+    let answered = false;
+    ch.port1.onmessage = e => {
+      answered = true;
+      if(e.data && e.data.type === "count")
+        setSwStatus(`Ready — ${e.data.total} files stored for offline use`);
+    };
+    navigator.serviceWorker.controller.postMessage("count", [ch.port2]);
+    setTimeout(() => { if(!answered) setSwStatus("Ready"); }, 1200);
+  }).catch(() => setSwStatus("Unavailable"));
+}
+
+if(SW_SUPPORTED){
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("sw.js")
+      .then(() => { setTimeout(refreshSwStatus, 600); })
+      .catch(err => { console.error("Service worker failed", err); setSwStatus("Install failed — see console"); });
+  });
+}
+
+$("#swreset").addEventListener("click", async () => {
+  if(!confirm("Clear the offline cache and reload? Your matches are not affected.")) return;
+  try{
+    if(SW_SUPPORTED){
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map(r => r.unregister()));
+    }
+    if(window.caches){
+      const names = await caches.keys();
+      await Promise.all(names.filter(n => n.startsWith("brawl-ledger-")).map(n => caches.delete(n)));
+    }
+    location.reload();
+  }catch(e){ console.error(e); toast("Could not clear the cache"); }
 });
 
 /* ============================================================
