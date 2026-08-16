@@ -7,14 +7,16 @@ score was, and who you were up against. No server, no account, no cost.
 
 ## Quick start
 
-**Locally** — portraits are loaded with `fetch`-style relative paths, so open it through a
-server rather than double-clicking the file:
+**Locally** — portraits load over relative paths, so serve it rather than double-clicking
+the file:
 
 ```bash
-cd brawlhalla-2v2-tracker
-python3 -m http.server 8000
-# → http://localhost:8000
+./start.sh
 ```
+
+That prints two links: one for this Mac, one for your phone on the same wifi. Ctrl-C stops
+it. The Mac has to stay awake, and offline mode stays off over a plain wifi address —
+browsers only enable it on `localhost` or real HTTPS.
 
 **On your phones (recommended)** — push to a GitHub repo and turn on Pages:
 
@@ -116,6 +118,7 @@ re-download.
 index.html         the whole app — markup, styles and logic
 sw.js              service worker: offline support and precaching
 assets/legends/    70 legend portraits (240×240)
+start.sh           serves the app locally and prints the phone link
 fetch-legends.sh   downloads/refreshes portraits from the wiki
 manifest.json      makes it installable as a home-screen app
 icon.svg           app icon
