@@ -467,6 +467,11 @@ const LEGENDS = [
 const BY_KEY = Object.fromEntries(LEGENDS.map(l => [l.k, l]));
 const nameOf = k => (BY_KEY[k] || {}).n || k;
 
+/* LEGENDS stays in release order (append new ones to the end); the picker shows this
+   A–Z view. Base sensitivity so Bödvar files under B rather than after Z. */
+const LEGENDS_AZ = [...LEGENDS].sort((a, b) =>
+  a.n.localeCompare(b.n, undefined, { sensitivity: "base" }));
+
 /* ============================================================
    Persistence
    ============================================================ */
@@ -669,11 +674,11 @@ function renderGrid(q){
     if(rec.length){
       html += `<div class="groupname">Recently used</div>`;
       html += rec.map(k => BY_KEY[k] ? tile(BY_KEY[k], "") : "").join("");
-      html += `<div class="groupname">All legends</div>`;
+      html += `<div class="groupname">All legends · A–Z</div>`;
     }
-    html += LEGENDS.map(l => tile(l, "")).join("");
+    html += LEGENDS_AZ.map(l => tile(l, "")).join("");
   } else {
-    const hits = LEGENDS.filter(l => l.n.toLowerCase().includes(q) || l.k.includes(q));
+    const hits = LEGENDS_AZ.filter(l => l.n.toLowerCase().includes(q) || l.k.includes(q));
     html = hits.length ? hits.map(l => tile(l, "")).join("")
                        : `<div class="empty" style="grid-column:1/-1">No legend matches “${esc(q)}”.</div>`;
   }
