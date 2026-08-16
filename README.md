@@ -93,8 +93,15 @@ but a router reboot or a stretch away from home can change it — and then the a
 completely empty on your phone. Nothing was deleted; it's filed under an address you're no
 longer visiting.
 
-**So use the `.local` name, not the IP.** `./start.sh` now prints it first. The name is fixed;
-the number isn't.
+**The IP is the reliable address; the `.local` name is the stable one.** Use the name if your
+phone resolves it — it survives lease changes — and fall back to the IP if it doesn't.
+
+`.local` needs two things to work: your phone must resolve Bonjour names, and the server must
+answer on whatever address family it picks. `python3 -m http.server` binds **IPv4 only**, while
+Bonjour publishes both A and AAAA records, so an iPhone that chose the IPv6 address would hit
+nothing at all. That's why this repo ships [`serve.py`](serve.py), which binds a dual-stack
+socket. If `.local` still doesn't resolve on your phone, the durable alternative is a DHCP
+reservation in your router so the IP never changes.
 
 Three other ways storage disappears, none of them specific to this app:
 
@@ -172,6 +179,7 @@ index.html         the whole app — markup, styles and logic
 sw.js              service worker: offline support and precaching
 assets/legends/    70 legend portraits (240×240)
 start.sh           serves the app locally and prints the phone link
+serve.py           dual-stack (IPv4 + IPv6) static server used by start.sh
 fetch-legends.sh   downloads/refreshes portraits from the wiki
 manifest.json      makes it installable as a home-screen app
 icon.svg           app icon

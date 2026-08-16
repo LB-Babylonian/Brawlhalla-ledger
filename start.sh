@@ -11,24 +11,20 @@ IP=$(ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null ||
 NAME=$(scutil --get LocalHostName 2>/dev/null || echo "")
 
 # Free the port if a previous run is still holding it.
-pkill -f "http.server $PORT" 2>/dev/null && sleep 1
+pkill -f "serve.py $PORT" 2>/dev/null; pkill -f "http.server $PORT" 2>/dev/null; sleep 1
 
 echo
 echo "  Brawl Ledger is running."
 echo
-if [ -n "$NAME" ]; then
-  echo "    On your phone: http://$NAME.local:$PORT"
-  echo
-  echo "    ^ Use this one. Your matches are stored per-address, and this name"
-  echo "      stays the same even when the router hands out a different IP."
-else
-  echo "    On your phone: http://${IP:-?}:$PORT"
-fi
-echo
+[ -n "$IP" ]   && echo "    On your phone: http://$IP:$PORT"
+[ -n "$NAME" ] && echo "    Or by name   : http://$NAME.local:$PORT"
 echo "    On this Mac  : http://localhost:$PORT"
-[ -n "$IP" ] && echo "    By IP        : http://$IP:$PORT   (changes over time — avoid)"
+echo
+echo "    Matches are stored per-address, so pick one and stick to it."
+echo "    The IP is the reliable one; the .local name survives IP changes"
+echo "    if your phone resolves it. Export from Data before switching."
 echo
 echo "  Same wifi, and the Mac has to stay awake. Press Ctrl-C to stop."
 echo
 
-python3 -m http.server "$PORT" --bind 0.0.0.0 >/dev/null 2>&1
+python3 "$(dirname "$0")/serve.py" "$PORT"
