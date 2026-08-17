@@ -644,7 +644,7 @@ function setWho(w){
   S.who = w; save();
   soloPlayer = w;                     // keep the stats view on whoever is playing
   draft = freshDraft();
-  renderTeams(); renderResult(); refreshSave();
+  renderTeams(); renderResult(); refreshSave(); updateSubtitle();
   if((($(".view.on") || {}).id) === "view-stats") renderStats();
 }
 
