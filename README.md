@@ -1,7 +1,8 @@
 # Brawl Ledger — Brawlhalla 2v2 tracker
 
-A single-page app for tracking a 2v2 duo's matches: who played which legend, what the
-score was, and who you were up against. No server, no account, no cost.
+A single-page app for tracking Brawlhalla matches — 2v2 and 1v1, on separate ladders: who
+played which legend, how many stocks each player finished with, and who you were up against.
+No server, no account, no cost.
 
 ![tabs](https://img.shields.io/badge/stack-one%20HTML%20file-ffc247) ![cost](https://img.shields.io/badge/cost-%240-41d18a)
 
@@ -26,6 +27,21 @@ browsers only enable it on `localhost` or real HTTPS.
    It launches full-screen like a native app.
 
 Everything is static, so GitHub Pages hosts it free forever.
+
+## Two ladders: 2v2 and 1v1
+
+The **2v2 / 1v1** switch in the header changes the whole app — logging, stats and history all
+show one ladder at a time, and the two never mix. Matches logged before 1v1 existed are 2v2
+by definition, so nothing needed converting.
+
+1v1 works the same way with one legend a side, plus a **Playing as** selector, since either of
+you might be laddering solo. Each of you keeps your own pre-filled legend, your own legend
+stats and your own record.
+
+That last part is why 1v1 is worth tracking separately: **Solo records** puts your two win
+rates side by side, and unlike 2v2 nobody can hide behind a teammate. The ◈ average-stocks
+figure is also far more meaningful here — in 2v2 it's diluted by matches your partner closed
+out, whereas in 1v1 it is purely yours.
 
 ## Logging a match
 

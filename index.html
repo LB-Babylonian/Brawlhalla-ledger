@@ -87,6 +87,26 @@ header{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:18p
 .title .sub{font-size:12px;letter-spacing:2.4px;text-transform:uppercase;color:var(--ink-faint);margin-top:3px}
 .spacer{flex:1}
 
+/* Mode switch (2v2 / 1v1) --------------------------------------- */
+.modeswitch{display:flex;gap:6px;flex:none}
+.modebtn{font-family:var(--display);font-size:16px;letter-spacing:1.6px;padding:9px 17px;border:0;
+  cursor:pointer;color:var(--ink-dim);background:rgba(255,255,255,.05);
+  box-shadow:inset 0 0 0 1px var(--line);transform:skewX(-10deg);transition:.16s}
+.modebtn>span{display:block;transform:skewX(10deg)}
+.modebtn:hover{color:var(--ink);background:rgba(255,255,255,.1)}
+.modebtn.on{color:#03142e;background:linear-gradient(180deg,#6bb2ff,var(--blue-deep));
+  box-shadow:0 5px 16px rgba(74,151,255,.35)}
+
+/* "Playing as" selector, 1v1 only */
+.whobar{display:flex;align-items:center;gap:9px;flex-wrap:wrap;padding:11px 14px;margin-bottom:14px;
+  background:linear-gradient(160deg,var(--panel-2),var(--panel));
+  box-shadow:inset 0 0 0 1px var(--line)}
+.whobar .lbl{font-family:var(--display);font-size:13px;letter-spacing:2px;color:var(--ink-faint)}
+.whobtn{font-family:var(--body);font-weight:700;font-size:13.5px;padding:8px 18px;border:0;cursor:pointer;
+  color:var(--ink-dim);background:rgba(255,255,255,.05);box-shadow:inset 0 0 0 1px var(--line);transition:.15s}
+.whobtn:hover{color:var(--ink);background:rgba(255,255,255,.11)}
+.whobtn.on{background:linear-gradient(180deg,var(--gold),var(--gold-deep));color:#241703}
+
 /* Tabs ---------------------------------------------------------- */
 nav.tabs{display:flex;gap:8px;margin:0 0 18px;flex-wrap:wrap}
 .tab{
@@ -120,6 +140,7 @@ nav.tabs{display:flex;gap:8px;margin:0 0 18px;flex-wrap:wrap}
 .team h2::before{content:"";width:4px;height:17px;background:currentColor;transform:skewX(-12deg)}
 
 .slots{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.slots.one{grid-template-columns:1fr;max-width:250px;margin:0 auto}
 .slot{
   background:rgba(0,0,0,.32);box-shadow:inset 0 0 0 1px var(--line);
   padding:10px;display:flex;flex-direction:column;align-items:center;gap:8px;transition:.16s;
@@ -285,12 +306,16 @@ nav.tabs{display:flex;gap:8px;margin:0 0 18px;flex-wrap:wrap}
 <div class="wrap">
 
   <header>
-    <div class="crest">2v2</div>
+    <div class="crest" id="crest">2v2</div>
     <div class="title">
       <h1>Brawl Ledger</h1>
       <div class="sub" id="subtitle">2v2 performance tracker</div>
     </div>
     <div class="spacer"></div>
+    <div class="modeswitch">
+      <button class="modebtn cut-sm on" data-mode="2v2"><span>2v2</span></button>
+      <button class="modebtn cut-sm" data-mode="1v1"><span>1v1</span></button>
+    </div>
   </header>
 
   <nav class="tabs">
@@ -302,22 +327,8 @@ nav.tabs{display:flex;gap:8px;margin:0 0 18px;flex-wrap:wrap}
 
   <!-- ========================= LOG ========================= -->
   <section class="view on" id="view-log">
-    <div class="teams">
-      <div class="team us cut">
-        <h2>Your Team</h2>
-        <div class="slots">
-          <div class="slot cut-sm" data-slot="p1"></div>
-          <div class="slot cut-sm" data-slot="p2"></div>
-        </div>
-      </div>
-      <div class="team them cut">
-        <h2>Enemy Team</h2>
-        <div class="slots">
-          <div class="slot cut-sm" data-slot="e1"></div>
-          <div class="slot cut-sm" data-slot="e2"></div>
-        </div>
-      </div>
-    </div>
+    <div id="whobar" hidden></div>
+    <div class="teams" id="teams"></div>
 
     <div class="panel cut" style="margin-top:14px">
       <div class="result cut-sm" id="result"></div>
@@ -483,7 +494,10 @@ const DEFAULTS = {
   v:2,
   players:{ p1:"Colin", p2:"Yesmine" },
   stocks:3,
+  mode:"2v2",                            // which ladder the app is currently showing
+  who:"p1",                              // in 1v1, which of you is playing
   lastPick:{ p1:"petra", p2:"sidra" },   // your star legends, pre-selected on a fresh start
+  lastPick1v1:{ p1:"petra", p2:"sidra" },
   matches:[]
 };
 
@@ -495,6 +509,8 @@ function load(){
     return { ...structuredClone(DEFAULTS), ...d,
              players:{ ...DEFAULTS.players, ...(d.players||{}) },
              lastPick:{ ...DEFAULTS.lastPick, ...(d.lastPick||{}) },
+             lastPick1v1:{ ...DEFAULTS.lastPick1v1, ...(d.lastPick1v1||{}) },
+             // Matches saved before 1v1 existed are all 2v2; tagged lazily by modeOf().
              matches: Array.isArray(d.matches) ? d.matches : [] };
   }catch(e){
     console.error("Could not read saved data", e);
@@ -561,17 +577,79 @@ window.addEventListener("hashchange", () => showView(location.hash.slice(1)));
    Draft match state
    ============================================================ */
 const SLOTS = ["p1","p2","e1","e2"];
-const OPPOSING = { p1:["e1","e2"], p2:["e1","e2"], e1:["p1","p2"], e2:["p1","p2"] };
+const MODE_SLOTS = { "2v2": ["p1","p2","e1","e2"], "1v1": ["p1","e1"] };
+const OPPOSING = {
+  "2v2": { p1:["e1","e2"], p2:["e1","e2"], e1:["p1","p2"], e2:["p1","p2"] },
+  "1v1": { p1:["e1"], e1:["p1"] }
+};
+/** Matches predate the 1v1 feature are 2v2 by definition. */
+const modeOf = m => m.mode || "2v2";
+const slotsForMode = () => MODE_SLOTS[S.mode];
 
 /** Your own legends carry over between sessions; opponents never do. */
 function freshDraft(){
-  return { p1:S.lastPick.p1, p2:S.lastPick.p2, e1:null, e2:null,
-           stocks:{ p1:null, p2:null, e1:null, e2:null } };
+  const stocks = { p1:null, p2:null, e1:null, e2:null };
+  return S.mode === "1v1"
+    ? { p1:S.lastPick1v1[S.who], p2:null, e1:null, e2:null, stocks }
+    : { p1:S.lastPick.p1, p2:S.lastPick.p2, e1:null, e2:null, stocks };
 }
 let draft = freshDraft();
 
-const SLOT_LABEL = () => ({
-  p1: S.players.p1, p2: S.players.p2, e1: "Enemy 1", e2: "Enemy 2"
+function SLOT_LABEL(){
+  return S.mode === "1v1"
+    ? { p1: S.players[S.who], e1: "Opponent" }
+    : { p1: S.players.p1, p2: S.players.p2, e1: "Enemy 1", e2: "Enemy 2" };
+}
+
+/** Panels differ per mode; slot contents are then filled by renderSlot(). */
+function renderTeams(){
+  const teams = $("#teams"), whobar = $("#whobar");
+  if(S.mode === "1v1"){
+    whobar.hidden = false;
+    whobar.innerHTML = `<div class="whobar cut-sm"><span class="lbl">Playing as</span>
+      ${["p1","p2"].map(w => `<button class="whobtn cut-sm${S.who===w?" on":""}"
+        data-who="${w}">${esc(S.players[w])}</button>`).join("")}</div>`;
+    teams.innerHTML = `
+      <div class="team us cut"><h2>You</h2>
+        <div class="slots one"><div class="slot cut-sm" data-slot="p1"></div></div></div>
+      <div class="team them cut"><h2>Opponent</h2>
+        <div class="slots one"><div class="slot cut-sm" data-slot="e1"></div></div></div>`;
+  } else {
+    whobar.hidden = true; whobar.innerHTML = "";
+    teams.innerHTML = `
+      <div class="team us cut"><h2>Your Team</h2>
+        <div class="slots"><div class="slot cut-sm" data-slot="p1"></div>
+          <div class="slot cut-sm" data-slot="p2"></div></div></div>
+      <div class="team them cut"><h2>Enemy Team</h2>
+        <div class="slots"><div class="slot cut-sm" data-slot="e1"></div>
+          <div class="slot cut-sm" data-slot="e2"></div></div></div>`;
+  }
+  renderSlots();
+}
+
+function setMode(mode){
+  if(!MODE_SLOTS[mode] || mode === S.mode) return;
+  S.mode = mode; save();
+  $$(".modebtn").forEach(b => b.classList.toggle("on", b.dataset.mode === mode));
+  $("#crest").textContent = mode;
+  draft = freshDraft();
+  renderTeams(); renderResult(); refreshSave(); updateSubtitle();
+  const open = ($(".view.on") || {}).id;
+  if(open === "view-stats")   renderStats();
+  if(open === "view-history") renderHistory();
+}
+
+function setWho(w){
+  if(S.who === w) return;
+  S.who = w; save();
+  draft = freshDraft();
+  renderTeams(); renderResult(); refreshSave();
+}
+
+$$(".modebtn").forEach(b => b.addEventListener("click", () => setMode(b.dataset.mode)));
+$("#whobar").addEventListener("click", e => {
+  const b = e.target.closest("[data-who]");
+  if(b) setWho(b.dataset.who);
 });
 
 /* Rebuilding a slot throws away its <img>, which makes the portrait flicker back to
@@ -593,7 +671,7 @@ function renderSlot(id){
     <div class="stocks">${buttons}</div>`;
 }
 
-function renderSlots(){ SLOTS.forEach(renderSlot); }
+function renderSlots(){ slotsForMode().forEach(renderSlot); }
 
 /** Pressed-state only — no DOM teardown, so portraits never reload. */
 function syncStocks(){
@@ -606,19 +684,22 @@ function syncStocks(){
 /** Totals once every box is filled in; null while the form is incomplete. */
 function draftTotals(){
   const s = draft.stocks;
-  if(SLOTS.some(id => s[id] === null)) return null;
-  return { us: s.p1 + s.p2, them: s.e1 + s.e2 };
+  if(slotsForMode().some(id => s[id] === null)) return null;
+  return S.mode === "1v1"
+    ? { us: s.p1, them: s.e1 }
+    : { us: s.p1 + s.p2, them: s.e1 + s.e2 };
 }
 
 function renderResult(){
   const el = $("#result");
-  const legendsPicked = SLOTS.every(id => draft[id]);
+  const legendsPicked = slotsForMode().every(id => draft[id]);
   const t = draftTotals();
 
   if(!legendsPicked || !t){
+    const solo = S.mode === "1v1";
     const missing = [];
-    if(!legendsPicked) missing.push("pick all four legends");
-    if(!t) missing.push("set everyone's remaining stocks");
+    if(!legendsPicked) missing.push(solo ? "pick both legends" : "pick all four legends");
+    if(!t) missing.push(solo ? "set both stock counts" : "set everyone's remaining stocks");
     el.innerHTML = `<div class="note">To save this match, ${missing.join(" and ")}.</div>`;
     return;
   }
@@ -632,7 +713,8 @@ function renderResult(){
     <span class="tot"><span style="color:var(--blue)">${t.us}</span>
       <span style="color:var(--ink-faint)">–</span>
       <span style="color:var(--red)">${t.them}</span></span>
-    <span class="note">${draft.stocks.p1}+${draft.stocks.p2} vs ${draft.stocks.e1}+${draft.stocks.e2}</span>`;
+    ${S.mode === "1v1" ? "" :
+      `<span class="note">${draft.stocks.p1}+${draft.stocks.p2} vs ${draft.stocks.e1}+${draft.stocks.e2}</span>`}`;
 }
 
 /**
@@ -651,7 +733,7 @@ function recentKeys(slot){
 
 function refreshSave(){
   const t = draftTotals();
-  $("#save").disabled = !(SLOTS.every(id => draft[id]) && t && t.us !== t.them);
+  $("#save").disabled = !(slotsForMode().every(id => draft[id]) && t && t.us !== t.them);
 }
 
 /* Slots are re-rendered wholesale, so both controls are delegated. */
@@ -669,7 +751,7 @@ $(".teams").addEventListener("click", e => {
     // blanks with 0. Only blanks — never overwrite a number you chose yourself,
     // so a timeout (both teams alive) is still recordable.
     if(!clearing && v > 0)
-      for(const other of OPPOSING[id])
+      for(const other of OPPOSING[S.mode][id])
         if(draft.stocks[other] === null) draft.stocks[other] = 0;
 
     syncStocks(); renderResult(); refreshSave();
@@ -752,28 +834,36 @@ document.addEventListener("keydown", e => { if(e.key === "Escape" && pickingSlot
 $("#save").addEventListener("click", () => {
   if($("#save").disabled) return;
   const t = draftTotals();
-  S.matches.push({
+  const rec = {
     id: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random()),
-    ts: Date.now(),
-    p1: draft.p1,  p2: draft.p2,  e1: draft.e1,  e2: draft.e2,
-    sp1: draft.stocks.p1, sp2: draft.stocks.p2,
-    se1: draft.stocks.e1, se2: draft.stocks.e2
-  });
-  // Remember the legends you just played so they're pre-selected next time.
-  S.lastPick = { p1: draft.p1, p2: draft.p2 };
+    ts: Date.now(), mode: S.mode,
+    p1: draft.p1, e1: draft.e1, sp1: draft.stocks.p1, se1: draft.stocks.e1
+  };
+  if(S.mode === "1v1"){
+    rec.who = S.who;
+    S.lastPick1v1[S.who] = draft.p1;
+  } else {
+    rec.p2 = draft.p2; rec.e2 = draft.e2;
+    rec.sp2 = draft.stocks.p2; rec.se2 = draft.stocks.e2;
+    S.lastPick = { p1: draft.p1, p2: draft.p2 };
+  }
+  S.matches.push(rec);
   save();
   toast(t.us > t.them ? "Win logged ⚔" : "Loss logged");
 
   // Your legends stay; opponents and stocks clear so nothing is recorded by accident.
   draft = freshDraft();
-  renderSlots(); renderResult(); refreshSave(); updateSubtitle();
+  renderTeams(); renderResult(); refreshSave(); updateSubtitle();
 });
 
+/** Every view shows one ladder at a time; this is that ladder's matches. */
+function inMode(){ return S.matches.filter(m => modeOf(m) === S.mode); }
+
 function updateSubtitle(){
-  const n = S.matches.length;
-  if(!n){ $("#subtitle").textContent = "2v2 performance tracker"; return; }
-  const w = S.matches.filter(m => (m.sp1 + m.sp2) > (m.se1 + m.se2)).length;
-  $("#subtitle").textContent = `${n} match${n>1?"es":""} · ${pct(w,n)}% win rate`;
+  const M = inMode(), n = M.length;
+  if(!n){ $("#subtitle").textContent = `${S.mode} performance tracker`; return; }
+  const w = M.filter(isWin).length;
+  $("#subtitle").textContent = `${S.mode} · ${n} match${n>1?"es":""} · ${pct(w,n)}% win rate`;
 }
 
 /* ============================================================
@@ -781,8 +871,8 @@ function updateSubtitle(){
    ============================================================ */
 let minGames = 3;
 
-const usTotal   = m => m.sp1 + m.sp2;
-const themTotal = m => m.se1 + m.se2;
+const usTotal   = m => m.sp1 + (m.sp2 || 0);
+const themTotal = m => m.se1 + (m.se2 || 0);
 const isWin     = m => usTotal(m) > themTotal(m);
 const mean      = a => a.length ? a.reduce((x,y) => x + y, 0) / a.length : 0;
 
@@ -834,10 +924,10 @@ function listCard(title, hint, rows, emptyMsg){
 }
 
 function renderStats(){
-  const M = S.matches, box = $("#statsbody");
+  const M = inMode(), box = $("#statsbody");
   if(!M.length){
     box.innerHTML = `<div class="panel cut"><div class="empty">
-      No matches logged yet. Head to <b style="color:var(--gold)">Log Match</b> and record your first game.
+      No ${S.mode} matches logged yet. Head to <b style="color:var(--gold)">Log Match</b> and record your first game.
     </div></div>`;
     return;
   }
@@ -848,8 +938,6 @@ function renderStats(){
   // current streak, from the most recent match backwards
   let streak = 0, streakWin = isWin(M[M.length-1]);
   for(let i = M.length-1; i >= 0; i--){ if(isWin(M[i]) === streakWin) streak++; else break; }
-
-  const p1 = esc(S.players.p1), p2 = esc(S.players.p2);
 
   const kpis = `<div class="kpis">
     <div class="kpi cut-sm"><div class="k">Matches</div><div class="v">${n}</div></div>
@@ -868,6 +956,77 @@ function renderStats(){
     ${[1,3,5,10].map(v => `<button class="chip cut-sm ${v===minGames?"on":""}" data-min="${v}">${v}+</button>`).join("")}
     <span style="margin-left:auto">Ranked by win rate, ties broken by sample size.</span>
   </div>`;
+
+  box.innerHTML = kpis + filters +
+    `<div class="cards">${S.mode === "1v1" ? cards1v1(M) : cards2v2(M)}</div>`;
+
+  $$("#statsbody .chip").forEach(c => c.addEventListener("click", () => {
+    minGames = +c.dataset.min; renderStats();
+  }));
+}
+
+/* ---- 1v1: one legend a side, and each of you has your own record ---- */
+function cards1v1(M){
+  const asLegend = r => rowHTML(portrait(r.key,"sm"), esc(nameOf(r.key)), r);
+  const oppRows  = tally(M, m => m.e1);
+  const easiest  = rank(oppRows, minGames, -1).filter(r => r.rate > 50).map(asLegend);
+  const hardest  = rank(oppRows, minGames,  1).filter(r => r.rate < 50).map(asLegend);
+
+  const perPlayer = ["p1","p2"].map(w => {
+    const own = M.filter(m => m.who === w);
+    const legs = rank(tally(own, m => m.p1, m => m.sp1), minGames).map(asLegend);
+    return listCard(`${esc(S.players[w])}'s legends`,
+      `Win rate with each pick, and ◈ average stocks left. ${own.length} solo match${own.length===1?"":"es"}.`,
+      legs, own.length ? `Nothing with ${minGames}+ matches yet.`
+                       : `${esc(S.players[w])} hasn't logged a 1v1 yet.`);
+  });
+
+  return soloRecordCard(M) + perPlayer.join("") +
+    listCard("Favourite prey", "Opponent legends you have a winning record against.",
+      easiest, `No opponent legend is above 50% with ${minGames}+ matches yet.`) +
+    listCard("Nemeses", "Opponent legends that beat you more often than not — practise against these.",
+      hardest, `Nothing below 50% with ${minGames}+ matches. Enjoy it while it lasts.`);
+}
+
+/** The 1v1 answer to "who's better": two independent solo records, side by side. */
+function soloRecordCard(M){
+  const side = w => {
+    const own = M.filter(m => m.who === w);
+    const wins = own.filter(isWin).length;
+    return { name: esc(S.players[w]), n: own.length, wins,
+             rate: pct(wins, own.length), avg: own.length ? mean(own.map(m => m.sp1)) : 0 };
+  };
+  const a = side("p1"), b = side("p2");
+  if(!a.n || !b.n){
+    const only = a.n ? a : b, other = a.n ? b : a;
+    return `<div class="panel cut card"><h3>Solo records</h3>
+      <div class="hint">Each of your own 1v1 win rates, side by side.</div>
+      <div class="empty">${other.name} hasn't logged a 1v1 yet — only ${only.name} has
+        (${only.n} match${only.n===1?"":"es"}, ${only.rate}%).</div></div>`;
+  }
+  const even = Math.abs(a.rate - b.rate) < 5;
+  const cls = x => even ? "gold" : (x.rate > (x === a ? b.rate : a.rate) ? "good" : "bad");
+  const verdict = even
+    ? `Separated by <b>${Math.abs(a.rate-b.rate)}</b> points — too close to call.`
+    : `<b>${(a.rate > b.rate ? a : b).name}</b> is ahead by
+       <b>${Math.abs(a.rate-b.rate)}</b> points in solo play.`;
+  return `<div class="panel cut card"><h3>Solo records</h3>
+    <div class="hint">Each of your own 1v1 win rates. Unlike 2v2, nobody can hide behind a teammate.</div>
+    <div class="duel">
+      <div class="side"><div class="pn">${a.name}</div>
+        <div class="big v ${cls(a)}">${a.rate}%</div>
+        <div class="cap">${a.wins}W ${a.n-a.wins}L · ◈ ${a.avg.toFixed(2)}</div></div>
+      <div class="vs">VS</div>
+      <div class="side"><div class="pn">${b.name}</div>
+        <div class="big v ${cls(b)}">${b.rate}%</div>
+        <div class="cap">${b.wins}W ${b.n-b.wins}L · ◈ ${b.avg.toFixed(2)}</div></div>
+    </div>
+    <div class="verdict cut-sm" style="margin-top:12px">${verdict}</div></div>`;
+}
+
+/* ---- 2v2 ---- */
+function cards2v2(M){
+  const p1 = esc(S.players.p1), p2 = esc(S.players.p2);
 
   // --- our comps (who plays what matters, so the pair is ordered) ---
   const comps = rank(tally(M, m => `${m.p1}|${m.p2}`), minGames).map(r => {
@@ -895,22 +1054,16 @@ function renderStats(){
       return rowHTML(portrait(a,"sm") + portrait(b,"sm"), `${esc(nameOf(a))} <span style="color:var(--ink-faint)">+</span> ${esc(nameOf(b))}`, r);
     });
 
-  box.innerHTML = kpis + filters + `<div class="cards">
-    ${listCard("Best duos", `Your legend pairings — ${p1} first, ${p2} second.`, comps)}
-    ${betterPlayerCard(M)}
-    ${listCard(`${p1}'s legends`, `Team win rate with each pick, and ◈ ${p1}'s own average stocks left.`, legs1)}
-    ${listCard(`${p2}'s legends`, `Team win rate with each pick, and ◈ ${p2}'s own average stocks left.`, legs2)}
-    ${listCard("Favourite prey", "Enemy legends you have a winning record against.",
-        easiest, `No enemy legend is above 50% with ${minGames}+ matches yet.`)}
-    ${listCard("Nemeses", "Enemy legends that beat you more often than not — practise against these.",
-        hardest, `Nothing below 50% with ${minGames}+ matches. Enjoy it while it lasts.`)}
-    ${listCard("Toughest enemy duos", "Enemy pairings with a winning record against you.",
-        ecomps, `No enemy duo is beating you over ${minGames}+ matches.`)}
-  </div>`;
-
-  $$("#statsbody .chip").forEach(c => c.addEventListener("click", () => {
-    minGames = +c.dataset.min; renderStats();
-  }));
+  return listCard("Best duos", `Your legend pairings — ${p1} first, ${p2} second.`, comps)
+    + betterPlayerCard(M)
+    + listCard(`${p1}'s legends`, `Team win rate with each pick, and ◈ ${p1}'s own average stocks left.`, legs1)
+    + listCard(`${p2}'s legends`, `Team win rate with each pick, and ◈ ${p2}'s own average stocks left.`, legs2)
+    + listCard("Favourite prey", "Enemy legends you have a winning record against.",
+        easiest, `No enemy legend is above 50% with ${minGames}+ matches yet.`)
+    + listCard("Nemeses", "Enemy legends that beat you more often than not — practise against these.",
+        hardest, `Nothing below 50% with ${minGames}+ matches. Enjoy it while it lasts.`)
+    + listCard("Toughest enemy duos", "Enemy pairings with a winning record against you.",
+        ecomps, `No enemy duo is beating you over ${minGames}+ matches.`);
 }
 
 /**
@@ -965,23 +1118,30 @@ function betterPlayerCard(M){
    History
    ============================================================ */
 function renderHistory(){
-  const box = $("#historybody");
-  if(!S.matches.length){
-    box.innerHTML = `<div class="panel cut"><div class="empty">No matches yet.</div></div>`;
+  const box = $("#historybody"), M = inMode();
+  if(!M.length){
+    box.innerHTML = `<div class="panel cut"><div class="empty">No ${S.mode} matches yet.</div></div>`;
     return;
   }
   const fmt = ts => new Date(ts).toLocaleString(undefined,
     { month:"short", day:"numeric", hour:"2-digit", minute:"2-digit" });
 
-  box.innerHTML = [...S.matches].reverse().map(m => {
+  box.innerHTML = [...M].reverse().map(m => {
     const won = isWin(m);
+    const solo = modeOf(m) === "1v1";
+    const ours   = solo ? portrait(m.p1,"sm") : portrait(m.p1,"sm") + portrait(m.p2,"sm");
+    const theirs = solo ? portrait(m.e1,"sm") : portrait(m.e1,"sm") + portrait(m.e2,"sm");
+    const meta = solo
+      ? `${fmt(m.ts)} · ${esc(S.players[m.who] || "?")} · stocks left
+         ${m.sp1} <span style="opacity:.6">vs</span> ${m.se1}`
+      : `${fmt(m.ts)} · stocks left
+         ${esc(S.players.p1)} ${m.sp1} / ${esc(S.players.p2)} ${m.sp2}
+         <span style="opacity:.6">vs</span> ${m.se1} / ${m.se2}`;
     return `<div class="match cut-sm ${won?"w":"l"}">
-      <div class="side">${portrait(m.p1,"sm")}${portrait(m.p2,"sm")}</div>
+      <div class="side">${ours}</div>
       <div class="sc ${won?"w":"l"}">${usTotal(m)}–${themTotal(m)}</div>
-      <div class="side">${portrait(m.e1,"sm")}${portrait(m.e2,"sm")}</div>
-      <div class="meta">${fmt(m.ts)} · stocks left
-        ${esc(S.players.p1)} ${m.sp1} / ${esc(S.players.p2)} ${m.sp2}
-        <span style="opacity:.6">vs</span> ${m.se1} / ${m.se2}</div>
+      <div class="side">${theirs}</div>
+      <div class="meta">${meta}</div>
       <button class="del" data-id="${m.id}" title="Delete match">✕</button>
     </div>`;
   }).join("");
@@ -1008,7 +1168,7 @@ $("#savesettings").addEventListener("click", () => {
   S.stocks = st;
   save(); fillSettings();
   draft.stocks = { p1:null, p2:null, e1:null, e2:null };   // ranges changed; clear stale picks
-  renderSlots(); renderResult(); refreshSave();
+  renderTeams(); renderResult(); refreshSave();
   toast("Settings saved");
 });
 
@@ -1055,7 +1215,7 @@ $("#wipe").addEventListener("click", () => {
   if(!confirm(`Delete all ${S.matches.length} matches permanently? Export first if you're unsure.`)) return;
   S = structuredClone(DEFAULTS);
   save(); draft = freshDraft();
-  renderSlots(); renderResult(); refreshSave(); updateSubtitle(); fillSettings();
+  renderTeams(); renderResult(); refreshSave(); updateSubtitle(); fillSettings();
   toast("Everything erased");
 });
 
@@ -1122,7 +1282,9 @@ $("#swreset").addEventListener("click", async () => {
 /* ============================================================
    Boot
    ============================================================ */
-renderSlots();
+$$(".modebtn").forEach(b => b.classList.toggle("on", b.dataset.mode === S.mode));
+$("#crest").textContent = S.mode;
+renderTeams();
 renderResult();
 refreshSave();
 updateSubtitle();
