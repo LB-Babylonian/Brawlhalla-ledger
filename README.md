@@ -43,6 +43,13 @@ rates side by side, and unlike 2v2 nobody can hide behind a teammate. The ◈ av
 figure is also far more meaningful here — in 2v2 it's diluted by matches your partner closed
 out, whereas in 1v1 it is purely yours.
 
+**Solo stats are never blended.** A `Solo stats for:` selector scopes the whole 1v1 view —
+KPIs, legends, matchups and the header line — to one of you, defaulting to whoever is playing.
+Two people with different styles meet different opponents and struggle against different
+legends, so averaging your matchup records together would hide exactly the thing you'd act on.
+`Combined` is there if you want it, but you have to ask for it. **Solo records** always shows
+both, since comparing is its whole purpose.
+
 ## Logging a match
 
 Pick the four legends, then tap **each player's own remaining stocks**. The result works

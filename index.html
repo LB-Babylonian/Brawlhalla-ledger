@@ -642,8 +642,10 @@ function setMode(mode){
 function setWho(w){
   if(S.who === w) return;
   S.who = w; save();
+  soloPlayer = w;                     // keep the stats view on whoever is playing
   draft = freshDraft();
   renderTeams(); renderResult(); refreshSave();
+  if((($(".view.on") || {}).id) === "view-stats") renderStats();
 }
 
 $$(".modebtn").forEach(b => b.addEventListener("click", () => setMode(b.dataset.mode)));
@@ -860,10 +862,18 @@ $("#save").addEventListener("click", () => {
 function inMode(){ return S.matches.filter(m => modeOf(m) === S.mode); }
 
 function updateSubtitle(){
-  const M = inMode(), n = M.length;
-  if(!n){ $("#subtitle").textContent = `${S.mode} performance tracker`; return; }
+  const all = inMode();
+  // In 1v1 the header must name whose record it is, or it contradicts the scoped KPIs.
+  let M = all, scopeLabel = "";
+  if(S.mode === "1v1"){
+    const scope = soloPlayer || S.who;
+    if(scope === "both"){ scopeLabel = " · combined"; }
+    else { M = all.filter(m => m.who === scope); scopeLabel = ` · ${S.players[scope]}`; }
+  }
+  const n = M.length;
+  if(!n){ $("#subtitle").textContent = `${S.mode}${scopeLabel} — no matches yet`; return; }
   const w = M.filter(isWin).length;
-  $("#subtitle").textContent = `${S.mode} · ${n} match${n>1?"es":""} · ${pct(w,n)}% win rate`;
+  $("#subtitle").textContent = `${S.mode}${scopeLabel} · ${n} match${n>1?"es":""} · ${pct(w,n)}% win rate`;
 }
 
 /* ============================================================
@@ -923,23 +933,15 @@ function listCard(title, hint, rows, emptyMsg){
   return `<div class="panel cut card"><h3>${title}</h3><div class="hint">${hint}</div>${body}</div>`;
 }
 
-function renderStats(){
-  const M = inMode(), box = $("#statsbody");
-  if(!M.length){
-    box.innerHTML = `<div class="panel cut"><div class="empty">
-      No ${S.mode} matches logged yet. Head to <b style="color:var(--gold)">Log Match</b> and record your first game.
-    </div></div>`;
-    return;
-  }
+/** Which player's solo stats are on screen. Defaults to whoever is playing. */
+let soloPlayer = null;
 
+function kpiRow(M){
   const n = M.length, w = M.filter(isWin).length;
   const diff = mean(M.map(m => usTotal(m) - themTotal(m)));
-
-  // current streak, from the most recent match backwards
-  let streak = 0, streakWin = isWin(M[M.length-1]);
-  for(let i = M.length-1; i >= 0; i--){ if(isWin(M[i]) === streakWin) streak++; else break; }
-
-  const kpis = `<div class="kpis">
+  let streak = 0, streakWin = isWin(M[n-1]);
+  for(let i = n-1; i >= 0; i--){ if(isWin(M[i]) === streakWin) streak++; else break; }
+  return `<div class="kpis">
     <div class="kpi cut-sm"><div class="k">Matches</div><div class="v">${n}</div></div>
     <div class="kpi cut-sm"><div class="k">Win rate</div>
       <div class="v ${w/n>=.5?"good":"bad"}">${pct(w,n)}%</div><div class="n">${w}W · ${n-w}L</div></div>
@@ -950,42 +952,78 @@ function renderStats(){
       <div class="v ${streakWin?"good":"bad"}">${streak}${streakWin?"W":"L"}</div>
       <div class="n">${streakWin?"on a roll":"time for a break"}</div></div>
   </div>`;
+}
 
-  const filters = `<div class="filters">
+function minChips(){
+  return `<div class="filters">
     <span>Minimum matches:</span>
     ${[1,3,5,10].map(v => `<button class="chip cut-sm ${v===minGames?"on":""}" data-min="${v}">${v}+</button>`).join("")}
     <span style="margin-left:auto">Ranked by win rate, ties broken by sample size.</span>
   </div>`;
+}
 
-  box.innerHTML = kpis + filters +
-    `<div class="cards">${S.mode === "1v1" ? cards1v1(M) : cards2v2(M)}</div>`;
+function playerChips(){
+  const opt = (v, label) =>
+    `<button class="chip cut-sm ${v===soloPlayer?"on":""}" data-solo="${v}">${label}</button>`;
+  return `<div class="filters">
+    <span>Solo stats for:</span>
+    ${opt("p1", esc(S.players.p1))}${opt("p2", esc(S.players.p2))}${opt("both", "Combined")}
+    <span style="margin-left:auto">Kept apart — different styles, different matchups.</span>
+  </div>`;
+}
 
-  $$("#statsbody .chip").forEach(c => c.addEventListener("click", () => {
+function renderStats(){
+  const all = inMode(), box = $("#statsbody");
+  if(!all.length){
+    box.innerHTML = `<div class="panel cut"><div class="empty">
+      No ${S.mode} matches logged yet. Head to <b style="color:var(--gold)">Log Match</b> and record your first game.
+    </div></div>`;
+    return;
+  }
+
+  if(S.mode === "1v1"){
+    if(soloPlayer === null) soloPlayer = S.who;
+    const M = soloPlayer === "both" ? all : all.filter(m => m.who === soloPlayer);
+    const whose = soloPlayer === "both" ? "" : `${esc(S.players[soloPlayer])}'s `;
+    box.innerHTML = playerChips()
+      + (M.length ? kpiRow(M) + minChips() + `<div class="cards">${soloRecordCard(all)}${cards1v1(M, whose)}</div>`
+                  : `<div class="panel cut"><div class="empty">
+                       ${esc(S.players[soloPlayer])} hasn't logged a 1v1 yet.</div></div>
+                     <div class="cards" style="margin-top:14px">${soloRecordCard(all)}</div>`);
+  } else {
+    box.innerHTML = kpiRow(all) + minChips() + `<div class="cards">${cards2v2(all)}</div>`;
+  }
+
+  $$("#statsbody .chip[data-min]").forEach(c => c.addEventListener("click", () => {
     minGames = +c.dataset.min; renderStats();
+  }));
+  $$("#statsbody .chip[data-solo]").forEach(c => c.addEventListener("click", () => {
+    soloPlayer = c.dataset.solo; renderStats(); updateSubtitle();
   }));
 }
 
-/* ---- 1v1: one legend a side, and each of you has your own record ---- */
-function cards1v1(M){
+/* ---- 1v1: one legend a side. Everything here is already scoped to one
+   player (or explicitly Combined), so matchups never blend two styles. ---- */
+function cards1v1(M, whose){
   const asLegend = r => rowHTML(portrait(r.key,"sm"), esc(nameOf(r.key)), r);
+  const legs     = rank(tally(M, m => m.p1, m => m.sp1), minGames).map(asLegend);
   const oppRows  = tally(M, m => m.e1);
   const easiest  = rank(oppRows, minGames, -1).filter(r => r.rate > 50).map(asLegend);
   const hardest  = rank(oppRows, minGames,  1).filter(r => r.rate < 50).map(asLegend);
 
-  const perPlayer = ["p1","p2"].map(w => {
-    const own = M.filter(m => m.who === w);
-    const legs = rank(tally(own, m => m.p1, m => m.sp1), minGames).map(asLegend);
-    return listCard(`${esc(S.players[w])}'s legends`,
-      `Win rate with each pick, and ◈ average stocks left. ${own.length} solo match${own.length===1?"":"es"}.`,
-      legs, own.length ? `Nothing with ${minGames}+ matches yet.`
-                       : `${esc(S.players[w])} hasn't logged a 1v1 yet.`);
-  });
+  // Titles read "Colin's nemeses" when scoped, "Nemeses" when combined — so they must
+  // be capitalised explicitly rather than relying on the CSS uppercase.
+  const legTitle  = whose ? `${whose}legends` : "Combined legends";
+  const preyTitle = whose ? `${whose}favourite prey` : "Favourite prey";
+  const nemTitle  = whose ? `${whose}nemeses` : "Nemeses";
 
-  return soloRecordCard(M) + perPlayer.join("") +
-    listCard("Favourite prey", "Opponent legends you have a winning record against.",
-      easiest, `No opponent legend is above 50% with ${minGames}+ matches yet.`) +
-    listCard("Nemeses", "Opponent legends that beat you more often than not — practise against these.",
-      hardest, `Nothing below 50% with ${minGames}+ matches. Enjoy it while it lasts.`);
+  return listCard(legTitle,
+      `Win rate with each pick, and ◈ average stocks left over ${M.length} solo match${M.length===1?"":"es"}.`,
+      legs)
+    + listCard(preyTitle, "Opponent legends with a losing record against you.",
+        easiest, `No opponent legend is above 50% with ${minGames}+ matches yet.`)
+    + listCard(nemTitle, "Opponent legends that beat you more often than not — practise against these.",
+        hardest, `Nothing below 50% with ${minGames}+ matches. Enjoy it while it lasts.`);
 }
 
 /** The 1v1 answer to "who's better": two independent solo records, side by side. */
