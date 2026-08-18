@@ -16,7 +16,10 @@ import socketserver
 import sys
 
 
-class DualStackServer(socketserver.TCPServer):
+class DualStackServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
+    # Threading matters: plain TCPServer handles one request at a time, so a phone
+    # that opens a keep-alive connection and then sleeps blocks the whole server.
+    # (`python3 -m http.server` uses ThreadingHTTPServer for exactly this reason.)
     address_family = socket.AF_INET6
     allow_reuse_address = True
     daemon_threads = True
