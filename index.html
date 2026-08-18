@@ -132,7 +132,19 @@ nav.tabs{display:flex;gap:8px;margin:0 0 18px;flex-wrap:wrap}
 .teams{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 @media(max-width:720px){.teams{grid-template-columns:1fr}}
 
-.team{padding:16px}
+.team{padding:16px;position:relative;transition:opacity .3s,filter .3s}
+
+/* Winning side gets a slow green breath; losing side steps back a little.
+   Drawn on ::after so it never fights the panel's own blue/red edge. */
+.team::after{content:"";position:absolute;inset:0;pointer-events:none;opacity:0;
+  box-shadow:inset 0 0 0 2px var(--green),inset 0 0 34px rgba(65,209,138,.22);
+  transition:opacity .3s}
+.team.winner::after{animation:winglow 2.1s ease-in-out infinite}
+.team.loser{opacity:.7;filter:saturate(.65)}
+@keyframes winglow{0%,100%{opacity:.35}50%{opacity:1}}
+@media (prefers-reduced-motion:reduce){
+  .team.winner::after{animation:none;opacity:.9}
+}
 .team.us{background:linear-gradient(160deg,rgba(74,151,255,.20),rgba(21,29,54,.96));box-shadow:inset 0 0 0 1px rgba(74,151,255,.35),var(--shadow)}
 .team.them{background:linear-gradient(160deg,rgba(255,90,90,.18),rgba(21,29,54,.96));box-shadow:inset 0 0 0 1px rgba(255,90,90,.32),var(--shadow)}
 .team h2{font-size:17px;letter-spacing:1.6px;display:flex;align-items:center;gap:8px;margin-bottom:14px}
@@ -151,13 +163,15 @@ nav.tabs{display:flex;gap:8px;margin:0 0 18px;flex-wrap:wrap}
 .pickbtn:hover{transform:translateY(-2px)}
 .pickbtn:hover .port{box-shadow:inset 0 0 0 2px var(--gold)}
 .slot .pick{font-size:13px;font-weight:700;text-align:center;line-height:1.25;min-height:2.4em;display:flex;align-items:center}
-.slot.empty .pick{color:var(--ink-faint)}
+.slot.vacant .pick{color:var(--ink-faint)}
 
 /* per-player remaining stocks */
 .stocks{display:flex;gap:4px;width:100%;margin-top:2px}
 .stk{flex:1;padding:8px 0;border:0;cursor:pointer;font-family:var(--display);font-size:15px;
   background:rgba(255,255,255,.05);box-shadow:inset 0 0 0 1px var(--line);color:var(--ink-faint);transition:.13s}
-.stk:hover{background:rgba(255,255,255,.13);color:var(--ink)}
+.stk:hover:not(:disabled){background:rgba(255,255,255,.13);color:var(--ink)}
+/* The losing side was wiped, so only 0 is selectable there. */
+.stk:disabled{opacity:.22;cursor:not-allowed}
 .us .stk.on{background:linear-gradient(180deg,#6bb2ff,var(--blue-deep));color:#03142e;box-shadow:0 3px 10px rgba(74,151,255,.3)}
 .them .stk.on{background:linear-gradient(180deg,#ff8585,var(--red-deep));color:#2a0606;box-shadow:0 3px 10px rgba(255,90,90,.3)}
 .stocklbl{font-size:9.5px;letter-spacing:1.4px;text-transform:uppercase;color:var(--ink-faint);font-weight:700}
@@ -660,7 +674,7 @@ $("#whobar").addEventListener("click", e => {
 function renderSlot(id){
   const box = $(`.slot[data-slot="${id}"]`);
   const labels = SLOT_LABEL(), k = draft[id], v = draft.stocks[id];
-  box.classList.toggle("empty", !k);
+  box.classList.toggle("vacant", !k);   // NOT "empty" — that is a stats utility class
   const buttons = Array.from({ length: S.stocks + 1 }, (_, n) =>
     `<button class="stk cut-sm${v === n ? " on" : ""}" data-stock="${id}" data-v="${n}"
       aria-label="${esc(labels[id])}: ${n} stocks left">${n}</button>`).join("");
@@ -671,16 +685,36 @@ function renderSlot(id){
     </button>
     <span class="stocklbl">Stocks left</span>
     <div class="stocks">${buttons}</div>`;
+  syncStocks();
 }
 
 function renderSlots(){ slotsForMode().forEach(renderSlot); }
 
-/** Pressed-state only — no DOM teardown, so portraits never reload. */
+/** Pressed + locked state only — no DOM teardown, so portraits never reload. */
 function syncStocks(){
   $$(".slot").forEach(box => {
-    const v = draft.stocks[box.dataset.slot];
-    box.querySelectorAll(".stk").forEach(b => b.classList.toggle("on", +b.dataset.v === v));
+    const id = box.dataset.slot, v = draft.stocks[id];
+    // If the other side finished with stocks, this side was wiped: 0 is the only option.
+    const locked = (OPPOSING[S.mode][id] || []).some(o => draft.stocks[o] > 0);
+    box.querySelectorAll(".stk").forEach(b => {
+      const n = +b.dataset.v;
+      b.classList.toggle("on", n === v);
+      b.disabled = locked && n > 0;
+    });
   });
+  paintWinner();
+}
+
+/** Subtle pulse on whichever team is currently winning. */
+function paintWinner(){
+  const t = draftTotals();
+  const us = $(".team.us"), them = $(".team.them");
+  if(!us || !them) return;
+  const decided = t && t.us !== t.them;
+  us.classList.toggle("winner",   decided && t.us > t.them);
+  us.classList.toggle("loser",    decided && t.us < t.them);
+  them.classList.toggle("winner", decided && t.them > t.us);
+  them.classList.toggle("loser",  decided && t.them < t.us);
 }
 
 /** Totals once every box is filled in; null while the form is incomplete. */
@@ -702,15 +736,18 @@ function renderResult(){
     const missing = [];
     if(!legendsPicked) missing.push(solo ? "pick both legends" : "pick all four legends");
     if(!t) missing.push(solo ? "set both stock counts" : "set everyone's remaining stocks");
+    paintWinner();
     el.innerHTML = `<div class="note">To save this match, ${missing.join(" and ")}.</div>`;
     return;
   }
   if(t.us === t.them){
+    paintWinner();
     el.innerHTML = `<div class="note warn">Both teams on ${t.us} stocks — a Brawlhalla match
       always resolves, so one side needs more than the other.</div>`;
     return;
   }
   const won = t.us > t.them;
+  paintWinner();
   el.innerHTML = `<span class="word ${won ? "win" : "loss"}">${won ? "Victory" : "Defeat"}</span>
     <span class="tot"><span style="color:var(--blue)">${t.us}</span>
       <span style="color:var(--ink-faint)">–</span>

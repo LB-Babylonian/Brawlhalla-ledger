@@ -59,9 +59,13 @@ In practice that's usually **two taps**. Finishing with stocks left means the ot
 wiped, so the moment you set a number above 0 for anyone, the opposing pair fills in as 0
 automatically. Your teammate stays blank — that's the one number still worth asking for.
 
-Only *blanks* get filled, never a number you chose yourself, so a **timeout** where both
-teams are still alive is recorded normally: enter your two, then tap the enemy's real
-number over the assumed 0.
+The losing side is then **locked to 0** — its other buttons are dimmed and inert, because a
+team that lost was wiped. One consequence worth knowing: a **timeout**, where the clock runs
+out with both teams still alive, cannot be recorded. It would save as a clean sweep instead.
+Say the word if that ever matters and the lock can become an override.
+
+The winning panel gets a slow green pulse and the losing one steps back, so the result is
+readable at a glance before you hit save.
 
 **Your legends are pre-filled.** Petra and Sidra to start with, and after that whatever you
 last played, with your own recent picks pinned at the top of the picker. Opponents get
