@@ -67,8 +67,8 @@ Say the word if that ever matters and the lock can become an override.
 The winning panel gets a slow green pulse and the losing one steps back, so the result is
 readable at a glance before you hit save.
 
-Each slot also carries your **historical record** with that legend, on two lines: a dim
-`6W 0L` above the win rate, which is the coloured headline. Three same-weight numbers on one
+Each slot also carries your **historical record** with that legend, on two lines: `6W 0L`
+above the win rate, which is the coloured headline. Three same-weight numbers on one
 row were hard to scan, so only the percentage carries colour — green above 55%, red below
 45%, gold in between. It is scoped to the current ladder, and in 1v1 to the current player,
 since the two of you keep separate records.
