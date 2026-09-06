@@ -82,12 +82,8 @@ Recording stocks per player rather than one team score is what makes **Better pl
 measurement instead of a guess, and it lets every legend row show how long that pick keeps
 *you* alive, not just whether the team won.
 
-Two consequences worth knowing:
-
-- A **timeout** is handled properly — if the clock runs out at 2 stocks vs 1, that's a win,
-  even though nobody hit zero.
-- A **tie can't be saved**. Brawlhalla always resolves in sudden death, so equal totals mean
-  a typo; the app says so rather than storing it.
+A **tie can't be saved** either. Brawlhalla always resolves in sudden death, so equal totals
+mean a typo; the app says so rather than storing it.
 
 Default is 3 stocks each. Change it under **Data → Stocks / player** for custom lobbies.
 
