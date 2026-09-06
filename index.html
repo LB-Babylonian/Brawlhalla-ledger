@@ -175,6 +175,9 @@ nav.tabs{display:flex;gap:8px;margin:0 0 18px;flex-wrap:wrap}
 .us .stk.on{background:linear-gradient(180deg,#6bb2ff,var(--blue-deep));color:#03142e;box-shadow:0 3px 10px rgba(74,151,255,.3)}
 .them .stk.on{background:linear-gradient(180deg,#ff8585,var(--red-deep));color:#2a0606;box-shadow:0 3px 10px rgba(255,90,90,.3)}
 .stocklbl{font-size:9.5px;letter-spacing:1.4px;text-transform:uppercase;color:var(--ink-faint);font-weight:700}
+.slot .rec{font-size:10.5px;font-weight:700;letter-spacing:.2px;font-variant-numeric:tabular-nums;
+  min-height:1.35em;display:flex;align-items:center;color:var(--ink-faint);white-space:nowrap}
+.slot .rec.good{color:var(--green)} .slot .rec.bad{color:var(--red)} .slot .rec.even{color:var(--gold)}
 
 /* live result read-out */
 .result{display:flex;align-items:center;justify-content:center;gap:18px;flex-wrap:wrap;
@@ -615,6 +618,37 @@ function SLOT_LABEL(){
     : { p1: S.players.p1, p2: S.players.p2, e1: "Enemy 1", e2: "Enemy 2" };
 }
 
+/**
+ * Our historical record for this slot's legend: with it on our own slots, against it on
+ * enemy slots. Always scoped to the current ladder — and in 1v1 to the current player,
+ * since the two of you keep separate records.
+ */
+function slotRecord(id, key){
+  if(!key) return null;
+  // In 1v1 the two of you keep separate records, so scope by player FIRST — that
+  // applies to opponents just as much as to your own picks.
+  const M = S.mode === "1v1"
+    ? inMode().filter(m => m.who === S.who)
+    : inMode();
+  const ours = id === "p1" || id === "p2";
+  const rel = ours
+    ? (S.mode === "1v1" ? M.filter(m => m.p1 === key) : M.filter(m => m[id] === key))
+    : M.filter(m => m.e1 === key || m.e2 === key);
+  if(!rel.length) return null;
+  const w = rel.filter(isWin).length;
+  return { w, l: rel.length - w, rate: pct(w, rel.length) };
+}
+
+/** Rendered even when empty, so every slot stays exactly the same height. */
+function recordHTML(id, key){
+  const r = slotRecord(id, key);
+  if(!r) return `<span class="rec">${key ? "no history yet" : ""}</span>`;
+  const foe = id === "e1" || id === "e2";
+  const cls = r.rate >= 55 ? "good" : r.rate <= 45 ? "bad" : "even";
+  const title = foe ? `Your record against ${nameOf(key)}` : `Your record with ${nameOf(key)}`;
+  return `<span class="rec ${cls}" title="${esc(title)}">${r.w}W ${r.l}L \u00b7 ${r.rate}%</span>`;
+}
+
 /** Panels differ per mode; slot contents are then filled by renderSlot(). */
 function renderTeams(){
   const teams = $("#teams"), whobar = $("#whobar");
@@ -683,6 +717,7 @@ function renderSlot(id){
       ${portrait(k)}
       <span class="pick">${k ? esc(nameOf(k)) : "Tap to pick"}</span>
     </button>
+    ${recordHTML(id, k)}
     <span class="stocklbl">Stocks left</span>
     <div class="stocks">${buttons}</div>`;
   syncStocks();

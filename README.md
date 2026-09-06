@@ -67,6 +67,11 @@ Say the word if that ever matters and the lock can become an override.
 The winning panel gets a slow green pulse and the losing one steps back, so the result is
 readable at a glance before you hit save.
 
+Each slot also carries your **historical record** with that legend — `6W 0L · 100%` under an
+opponent means you have beaten that legend six times out of six. Green above 55%, red below
+45%, gold in between. It is scoped to the current ladder, and in 1v1 to the current player,
+since the two of you keep separate records.
+
 **Your legends are pre-filled.** Petra and Sidra to start with, and after that whatever you
 last played, with your own recent picks pinned at the top of the picker. Opponents get
 neither — their draw is effectively random, so a "recent" list would be noise — and they
