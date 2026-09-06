@@ -244,6 +244,17 @@ nav.tabs{display:flex;gap:8px;margin:0 0 18px;flex-wrap:wrap}
   padding:6px;color:var(--ink);transition:.13s;display:flex;flex-direction:column;gap:5px}
 .lg:hover{box-shadow:inset 0 0 0 2px var(--gold);transform:translateY(-3px);background:rgba(255,194,71,.1)}
 .lg .nm{font-size:10.5px;font-weight:700;text-align:center;line-height:1.2;letter-spacing:.2px}
+/* Win rate on the tiles, but only when picking one of YOUR OWN legends —
+   it can steer that choice. Opponents are drawn, not chosen. */
+.lg .lgrate{display:flex;align-items:baseline;justify-content:center;gap:3px;line-height:1;
+  font-family:var(--display);font-size:12.5px;letter-spacing:.4px;color:var(--ink-dim);
+  font-variant-numeric:tabular-nums}
+.lg .lgrate i{font-family:var(--body);font-style:normal;font-weight:700;font-size:9.5px;
+  color:var(--ink-faint)}
+.lg .lgrate.good{color:var(--green)}
+.lg .lgrate.bad{color:var(--red)}
+.lg .lgrate.even{color:var(--gold)}
+.lg .lgrate.none{color:var(--ink-faint);font-size:11px}
 .lg .tag{font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--gold);font-weight:700}
 .grid [hidden]{display:none}
 .groupname{grid-column:1/-1;font-family:var(--display);font-size:12px;letter-spacing:2.2px;
@@ -867,12 +878,22 @@ let gridBuiltFor = null;
 
 function buildGrid(){
   const rec = recentKeys(pickingSlot);
-  const signature = pickingSlot + "|" + SLOT_LABEL()[pickingSlot] + "|" + rec.join(",");
+  const signature = [pickingSlot, SLOT_LABEL()[pickingSlot], rec.join(","),
+                     S.mode, S.who, S.matches.length].join("|");
   if(gridBuiltFor === signature) return;          // nothing changed since last time
   gridBuiltFor = signature;
 
+  const ourPick = pickingSlot === "p1" || pickingSlot === "p2";
+  const rateTag = l => {
+    if(!ourPick) return "";                       // enemy legends are drawn, not chosen
+    const r = slotRecord(pickingSlot, l.k);
+    if(!r) return `<span class="lgrate none">&mdash;</span>`;
+    const cls = r.rate >= 55 ? "good" : r.rate <= 45 ? "bad" : "even";
+    return `<span class="lgrate ${cls}" title="${esc(`${r.w}W ${r.l}L with ${l.n}`)}">`
+         + `${r.rate}%<i>&middot;${r.w + r.l}</i></span>`;
+  };
   const tile = (l, extra="") => `<button class="lg cut-sm${extra}" data-k="${l.k}">
-      ${portrait(l.k)}<span class="nm">${esc(l.n)}</span></button>`;
+      ${portrait(l.k)}<span class="nm">${esc(l.n)}</span>${rateTag(l)}</button>`;
   let html = "";
   if(rec.length){
     html += `<div class="groupname">${esc(SLOT_LABEL()[pickingSlot])}'s recent picks</div>`;

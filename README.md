@@ -73,6 +73,11 @@ row were hard to scan, so only the percentage carries colour — green above 55%
 45%, gold in between. It is scoped to the current ladder, and in 1v1 to the current player,
 since the two of you keep separate records.
 
+When you open the picker for **your own** slot, every tile carries your win rate with that
+legend and the number of games behind it (`75%·4`), so the choice is informed before you make
+it. Enemy pickers show none of that — you don't choose who you're drawn against, so it would
+only be clutter.
+
 **Your legends are pre-filled.** Petra and Sidra to start with, and after that whatever you
 last played, with your own recent picks pinned at the top of the picker. Opponents get
 neither — their draw is effectively random, so a "recent" list would be noise — and they
