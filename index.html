@@ -297,6 +297,7 @@ nav.tabs{display:flex;gap:8px;margin:0 0 18px;flex-wrap:wrap}
 .duel .pn{font-family:var(--display);font-size:17px;letter-spacing:1.2px}
 .duel .big{font-family:var(--display);font-size:40px;line-height:1.1}
 .duel .cap{font-size:10.5px;letter-spacing:1.4px;text-transform:uppercase;color:var(--ink-faint)}
+.duel .cap.clutch{color:var(--gold);font-weight:700;margin-top:3px;letter-spacing:1.1px}
 .duel .vs{font-family:var(--display);font-size:15px;color:var(--gold);letter-spacing:1.5px}
 .verdict{background:rgba(255,194,71,.10);box-shadow:inset 0 0 0 1px rgba(255,194,71,.28);
   padding:11px 13px;font-size:13px;line-height:1.5}
@@ -1225,6 +1226,13 @@ function betterPlayerCard(M){
   const a1 = mean(M.map(m => m.sp1)), a2 = mean(M.map(m => m.sp2));
   const surv1 = pct(M.filter(m => m.sp1 > 0).length, M.length);
   const surv2 = pct(M.filter(m => m.sp2 > 0).length, M.length);
+  // A clutch: a win closed out alone, with your partner already knocked out.
+  const wins = M.filter(isWin);
+  const clutch = (mine, partner) => wins.filter(m => m[partner] === 0 && m[mine] > 0).length;
+  const cl1 = clutch("sp1", "sp2"), cl2 = clutch("sp2", "sp1");
+  const clutchCap = (n, who) =>
+    `<div class="cap clutch" title="${esc(`${n} of ${wins.length} wins closed out after ${who} was left alone`)}">`
+    + `${n} clutch${n === 1 ? "" : "es"}</div>`;
   const gap = Math.abs(a1 - a2);
   const total = a1 + a2;
   const share1 = total ? Math.round(a1 / total * 100) : 50;
@@ -1243,15 +1251,18 @@ function betterPlayerCard(M){
     ? `<div class="hint" style="margin:10px 0 0">Only ${M.length} matches — treat this as a rumour, not a verdict.</div>` : "";
 
   return `<div class="panel cut card"><h3>Better player</h3>
-    <div class="hint">Your own average stocks left at the end, across ${M.length} matches. Higher is better.</div>
+    <div class="hint">Your own average stocks left at the end, across ${M.length} matches. Higher is
+      better. A <b>clutch</b> is a win you closed out after your partner was already knocked out.</div>
     <div class="duel">
       <div class="side"><div class="pn">${p1}</div>
         <div class="big v ${c1}">${a1.toFixed(2)}</div>
-        <div class="cap">survived ${surv1}%</div></div>
+        <div class="cap">survived ${surv1}%</div>
+        ${clutchCap(cl1, p1)}</div>
       <div class="vs">VS</div>
       <div class="side"><div class="pn">${p2}</div>
         <div class="big v ${c2}">${a2.toFixed(2)}</div>
-        <div class="cap">survived ${surv2}%</div></div>
+        <div class="cap">survived ${surv2}%</div>
+        ${clutchCap(cl2, p2)}</div>
     </div>
     <div class="bar" style="height:8px"><i style="width:${share1}%;background:linear-gradient(90deg,var(--blue-deep),var(--blue))"></i></div>
     <div class="verdict cut-sm" style="margin-top:12px">${verdict}</div>${caveat}
