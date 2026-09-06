@@ -1238,10 +1238,10 @@ function betterPlayerCard(M){
   const share1 = total ? Math.round(a1 / total * 100) : 50;
 
   const even = gap < 0.15;
-  let verdict;
+  // Nothing is said when the gap isn't meaningful — an empty verdict is noise.
+  let verdict = "";
   if(total === 0) verdict = `Neither of you has finished a match alive. Rough patch.`;
-  else if(even) verdict = `Neck and neck — <b>${gap.toFixed(2)}</b> stocks per match between you. Blame the enemy team.`;
-  else {
+  else if(!even){
     const better = a1 > a2 ? p1 : p2, worse = a1 > a2 ? p2 : p1;
     verdict = `<b>${better}</b> survives <b>${gap.toFixed(2)}</b> more stocks per match than ${worse}.`;
   }
@@ -1265,7 +1265,7 @@ function betterPlayerCard(M){
         ${clutchCap(cl2, p2)}</div>
     </div>
     <div class="bar" style="height:8px"><i style="width:${share1}%;background:linear-gradient(90deg,var(--blue-deep),var(--blue))"></i></div>
-    <div class="verdict cut-sm" style="margin-top:12px">${verdict}</div>${caveat}
+    ${verdict ? `<div class="verdict cut-sm" style="margin-top:12px">${verdict}</div>` : ""}${caveat}
   </div>`;
 }
 
