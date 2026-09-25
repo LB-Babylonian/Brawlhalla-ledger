@@ -280,6 +280,7 @@ nav.tabs{display:flex;gap:8px;margin:0 0 18px;flex-wrap:wrap}
 .row .ports{display:flex;gap:4px;flex:none}
 .row .name{flex:1;min-width:0;font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .row .wl{font-size:11px;color:var(--ink-faint);flex:none;font-variant-numeric:tabular-nums}
+.row .wl.faced{color:var(--ink-dim);font-weight:700}
 .row .pct{font-family:var(--display);font-size:16px;flex:none;width:52px;text-align:right;font-variant-numeric:tabular-nums}
 .bar{height:4px;background:rgba(255,255,255,.08);margin-top:5px;overflow:hidden}
 .bar i{display:block;height:100%;background:linear-gradient(90deg,var(--gold-deep),var(--gold))}
@@ -1018,15 +1019,17 @@ function rank(rows, min, dir = -1){
              .sort((a,b) => dir * (a.rate - b.rate) || b.n - a.n);
 }
 
-function rowHTML(portsHTML, label, r){
+function rowHTML(portsHTML, label, r, showCount){
   const cls = r.rate >= 55 ? "g" : r.rate <= 45 ? "r" : "";
   const avg = r.avg == null ? ""
     : `<div class="wl" title="Average stocks left at the end of the match">◈ ${r.avg.toFixed(2)}</div>`;
+  const faced = showCount
+    ? `<div class="wl faced" title="Matches played against this legend">&times;${r.n}</div>` : "";
   return `<div class="rowwrap">
     <div class="row">
       <div class="ports">${portsHTML}</div>
       <div class="name">${label}</div>
-      ${avg}
+      ${faced}${avg}
       <div class="wl">${r.w}W ${r.l}L</div>
       <div class="pct">${r.rate}%</div>
     </div>
@@ -1034,8 +1037,19 @@ function rowHTML(portsHTML, label, r){
   </div>`;
 }
 
-function listCard(title, hint, rows, emptyMsg){
-  const body = rows.length ? rows.slice(0, 8).join("")
+/**
+ * Every opponent legend faced, ordered by how often — not by how well you do.
+ * Deliberately ignores the minimum-matches filter: once-met legends just sort to
+ * the bottom, and hiding them would defeat the point of a full listing.
+ */
+function mostFacedRows(enemyRows){
+  return enemyRows.slice()
+    .sort((a, b) => b.n - a.n || b.rate - a.rate || a.key.localeCompare(b.key))
+    .map(r => rowHTML(portrait(r.key, "sm"), esc(nameOf(r.key)), r, true));
+}
+
+function listCard(title, hint, rows, emptyMsg, limit = 8){
+  const body = rows.length ? rows.slice(0, limit).join("")
                            : `<div class="empty">${emptyMsg || `Nothing with ${minGames}+ matches yet.`}</div>`;
   return `<div class="panel cut card"><h3>${title}</h3><div class="hint">${hint}</div>${body}</div>`;
 }
@@ -1065,7 +1079,7 @@ function minChips(){
   return `<div class="filters">
     <span>Minimum matches:</span>
     ${[1,3,5,10].map(v => `<button class="chip cut-sm ${v===minGames?"on":""}" data-min="${v}">${v}+</button>`).join("")}
-    <span style="margin-left:auto">Ranked by win rate, ties broken by sample size.</span>
+    <span style="margin-left:auto">Applies to the ranked cards; &ldquo;most faced&rdquo; always shows everything.</span>
   </div>`;
 }
 
@@ -1123,10 +1137,13 @@ function cards1v1(M, whose){
   const legTitle  = whose ? `${whose}legends` : "Combined legends";
   const preyTitle = whose ? `${whose}favourite prey` : "Favourite prey";
   const nemTitle  = whose ? `${whose}nemeses` : "Nemeses";
+  const facedTitle = whose ? `${whose}most faced` : "Most faced";
 
   return listCard(legTitle,
       `Win rate with each pick, and ◈ average stocks left over ${M.length} solo match${M.length===1?"":"es"}.`,
       legs)
+    + listCard(facedTitle, "Every opponent legend you've run into, most frequent first. Ignores the minimum filter.",
+        mostFacedRows(oppRows), "No opponents recorded yet.", 14)
     + listCard(preyTitle, "Opponent legends with a losing record against you.",
         easiest, `No opponent legend is above 50% with ${minGames}+ matches yet.`)
     + listCard(nemTitle, "Opponent legends that beat you more often than not — practise against these.",
@@ -1203,6 +1220,8 @@ function cards2v2(M){
     + betterPlayerCard(M)
     + listCard(`${p1}'s legends`, `Team win rate with each pick, and ◈ ${p1}'s own average stocks left.`, legs1)
     + listCard(`${p2}'s legends`, `Team win rate with each pick, and ◈ ${p2}'s own average stocks left.`, legs2)
+    + listCard("Most faced", "Every enemy legend you've run into, most frequent first. Ignores the minimum filter.",
+        mostFacedRows(enemyRows), "No enemy legends recorded yet.", 14)
     + listCard("Favourite prey", "Enemy legends you have a winning record against.",
         easiest, `No enemy legend is above 50% with ${minGames}+ matches yet.`)
     + listCard("Nemeses", "Enemy legends that beat you more often than not — practise against these.",

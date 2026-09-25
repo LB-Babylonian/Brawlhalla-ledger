@@ -101,6 +101,7 @@ Default is 3 stocks each. Change it under **Data → Stocks / player** for custo
 | **Best duos** | Which pairing to lock in — ordered, so "you on Bödvar" ≠ "her on Bödvar" |
 | **Better player** | Your own average stocks left, how often each of you survives, and how many wins you closed out alone after your partner died |
 | **Colin's / Yesmine's legends** | Team win rate per pick, plus ◈ that player's own average stocks left — how Petra and Sidra really compare to your alternates |
+| **Most faced** | Every enemy legend you've met, most frequent first, with the record against each |
 | **Favourite prey** / **Nemeses** | Enemy legends you beat, and the ones to practise against |
 | **Toughest enemy duos** | Enemy pairings with a winning record over you |
 
