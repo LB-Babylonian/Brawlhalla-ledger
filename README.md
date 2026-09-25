@@ -175,10 +175,6 @@ If a portrait is ever missing the app falls back to a coloured crest with the le
 initials, so nothing breaks. You can also just drop your own square PNG at
 `assets/legends/<key>.png`.
 
-> The newest legend, Qinghua & Baobao, has no proper portrait on the wiki yet — the
-> placeholder is a cropped photo. Replace `assets/legends/qinghuabaobao.png` when a real one
-> appears.
-
 Portraits are Brawlhalla artwork © Blue Mammoth Games / Ubisoft, used here for a personal,
 non-commercial tracker. Don't ship this as a product.
 
