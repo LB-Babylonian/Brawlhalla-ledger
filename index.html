@@ -1289,8 +1289,8 @@ function cards1v1(M, whose){
   const legs     = rank(tally(M, m => m.p1, m => m.sp1), minGames).map(asLegend);
   const oppRows  = tally(M, m => m.e1);
 
-  // Titles read "Colin's nemeses" when scoped, "Nemeses" when combined — so they must
-  // be capitalised explicitly rather than relying on the CSS uppercase.
+  // Titles read "Colin's most faced" when scoped, "Most faced" when combined — so they
+  // must be capitalised explicitly rather than relying on the CSS uppercase.
   const legTitle  = whose ? `${whose}legends` : "Combined legends";
   const facedTitle = whose ? `${whose}most faced` : "Most faced";
 
