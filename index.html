@@ -315,7 +315,7 @@ nav.tabs{display:flex;gap:8px;margin:0 0 18px;flex-wrap:wrap}
    scrolls inside its own box rather than the page scrolling sideways. Capped on the
    wide side too, so a full-width desktop card doesn't blow the type up. */
 .quadwrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
-.quad{display:block;margin:4px auto 2px;width:100%;min-width:560px;max-width:760px;
+.quad{display:block;margin:4px auto 2px;width:100%;min-width:560px;max-width:900px;
   height:auto;overflow:visible}
 .quad .qgrid{stroke:rgba(255,255,255,.055);stroke-width:1}
 .quad .qsplit{stroke:rgba(255,255,255,.28);stroke-width:1;stroke-dasharray:5 4}
@@ -333,12 +333,18 @@ nav.tabs{display:flex;gap:8px;margin:0 0 18px;flex-wrap:wrap}
 .quad .qpt:focus{outline:none}
 .quad .qpt.on .qring{stroke:var(--gold);stroke-width:3.5}
 
-.qread{display:flex;align-items:baseline;gap:7px;flex-wrap:wrap;margin-top:10px;padding:10px 13px;
-  background:rgba(0,0,0,.28);box-shadow:inset 0 0 0 1px var(--line);font-size:13px}
-.qread .qname{font-family:var(--display);font-size:16px;letter-spacing:.8px;color:var(--gold)}
-.qread .qsep{color:var(--ink-faint);font-size:11.5px;letter-spacing:1px;text-transform:uppercase}
-.qread b{font-variant-numeric:tabular-nums;color:var(--ink)}
-.qread b.good{color:var(--green)} .qread b.bad{color:var(--red)} .qread b.even{color:var(--gold)}
+.quad .qnum{font-family:var(--body);font-size:11.5px;font-weight:700;fill:var(--ink-dim);
+  font-variant-numeric:tabular-nums;paint-order:stroke;stroke:rgba(10,14,28,.85);stroke-width:3px}
+.quad .qnum.g{fill:var(--green)} .quad .qnum.r{fill:var(--red)} .quad .qnum.e{fill:var(--gold)}
+.quad .qpt{transition:opacity .15s}
+.quad .qpt.dim{opacity:.13}
+.quad .qpt.hit .qring{stroke:var(--gold);stroke-width:4}
+
+.qsearch{width:100%;max-width:320px;margin:2px 0 6px;padding:10px 13px;border:0;
+  background:rgba(0,0,0,.34);box-shadow:inset 0 0 0 1px var(--line);color:var(--ink);
+  font:inherit;font-size:14px}
+.qsearch::placeholder{color:var(--ink-faint)}
+.qsearch:focus{outline:0;box-shadow:inset 0 0 0 1px var(--gold)}
 
 /* ============================================================
    History
@@ -1103,7 +1109,7 @@ function quadrantChart(rows){
       for(let j = i + 1; j < pts.length; j++){
         const a = pts[i], b = pts[j];
         let dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy);
-        const min = rad * 2 + 3;
+        const min = rad * 2 + 15;   // room for the label under each point
         if(d >= min) continue;
         if(d < 0.001){ dx = 0.6; dy = 0.8; d = 1; }
         const push = (min - d) / 2, ux = dx / d, uy = dy / d;
@@ -1117,12 +1123,12 @@ function quadrantChart(rows){
   const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
   for(const p of pts){
     p.x = clamp(p.x, x0 + rad, x1 - rad);
-    p.y = clamp(p.y, y0 + rad, y1 - rad);
+    p.y = clamp(p.y, y0 + rad, y1 - rad - 14);   // keep the label inside the frame
     // keep each point on the side of the dividers its real numbers put it on
     if(p.r.n > med)      p.x = clamp(p.x, vx + 2, x1 - rad);
     else if(p.r.n < med) p.x = clamp(p.x, x0 + rad, vx - 2);
     if(p.r.rate > 50)      p.y = clamp(p.y, y0 + rad, hy - 2);
-    else if(p.r.rate < 50) p.y = clamp(p.y, hy + 2, y1 - rad);
+    else if(p.r.rate < 50) p.y = clamp(p.y, hy + 2, y1 - rad - 14);
   }
 
   const tint = (x, y, w, h, fill) =>
@@ -1145,6 +1151,9 @@ function quadrantChart(rows){
       <image href="assets/legends/${p.r.key}.png" x="${(p.x - rad).toFixed(1)}"
              y="${(p.y - rad).toFixed(1)}" width="${rad * 2}" height="${rad * 2}"
              clip-path="url(#qclip)" preserveAspectRatio="xMidYMid slice"/>
+      <text x="${p.x.toFixed(1)}" y="${(p.y + rad + 13).toFixed(1)}" text-anchor="middle"
+            class="qnum ${p.r.rate >= 55 ? "g" : p.r.rate <= 45 ? "r" : "e"}"
+            >&times;${p.r.n} &middot; ${p.r.rate}%</text>
     </g>`).join("");
 
   return `<svg viewBox="0 0 ${W} ${H}" class="quad" role="img"
@@ -1169,33 +1178,21 @@ function quadrantChart(rows){
 }
 
 /** Full-width card wrapping the plot, with a tap-to-inspect caption underneath. */
-let lastQuadRows = [];
-
 function quadrantCard(title, rows){
-  lastQuadRows = rows;
   if(!rows.length)
     return `<div class="panel cut card wide"><h3>${title}</h3>
       <div class="hint">How often you meet each legend, against how often you beat it.</div>
       <div class="empty">No opponents recorded yet.</div></div>`;
-  const top = rows.slice().sort((a, b) => b.n - a.n || b.rate - a.rate)[0];
   return `<div class="panel cut card wide"><h3>${title}</h3>
     <div class="hint">How often you meet each legend against how often you beat it. Split at 50% and
       at the median number of encounters, so the red corner is what's worth practising.
-      Tap a portrait for its numbers. Ignores the minimum filter.</div>
+      Ignores the minimum filter.</div>
+    <input class="qsearch cut-sm" id="qsearch" type="search" autocomplete="off"
+           spellcheck="false" placeholder="Find a legend on the plot\u2026">
     <div class="quadwrap">${quadrantChart(rows)}</div>
-    <div class="qread" id="qread">${quadRead(top)}</div>
   </div>`;
 }
 
-function quadRead(r){
-  const cls = r.rate >= 55 ? "good" : r.rate <= 45 ? "bad" : "even";
-  // Real spaces, not just the flex gap: the line must still read correctly if
-  // the stylesheet never arrives, and it makes the text selectable as one phrase.
-  return `<span class="qname">${esc(nameOf(r.key))}</span> `
-    + `<span class="qsep">faced</span> <b>${r.n}</b> `
-    + `<span class="qsep">&middot;</span> <b>${r.w}W ${r.l}L</b> `
-    + `<span class="qsep">&middot;</span> <b class="${cls}">${r.rate}%</b>`;
-}
 
 function listCard(title, hint, rows, emptyMsg, limit = 8){
   const body = rows.length ? rows.slice(0, limit).join("")
@@ -1271,16 +1268,17 @@ function renderStats(){
     soloPlayer = c.dataset.solo; renderStats(); updateSubtitle();
   }));
 
-  // Tapping a point writes its numbers under the plot. Hover tooltips don't
-  // exist on a phone, and this app is mostly used on one.
-  const quad = $("#statsbody .quad");
-  if(quad) quad.addEventListener("click", e => {
-    const g = e.target.closest(".qpt");
-    if(!g) return;
-    const row = lastQuadRows.find(r => r.key === g.dataset.k);
-    if(!row) return;
-    $$("#statsbody .qpt").forEach(x => x.classList.toggle("on", x === g));
-    $("#qread").innerHTML = quadRead(row);
+  // Searching the plot dims everything else rather than removing it, so you keep
+  // the sense of where the match sits among the rest.
+  const qs = $("#qsearch");
+  if(qs) qs.addEventListener("input", () => {
+    const q = qs.value.trim().toLowerCase();
+    $$("#statsbody .qpt").forEach(g => {
+      const l = BY_KEY[g.dataset.k];
+      const hit = !!q && (l.n.toLowerCase().includes(q) || l.k.includes(q));
+      g.classList.toggle("hit", hit);
+      g.classList.toggle("dim", !!q && !hit);
+    });
   });
 }
 
@@ -1290,24 +1288,16 @@ function cards1v1(M, whose){
   const asLegend = r => rowHTML(portrait(r.key,"sm"), esc(nameOf(r.key)), r);
   const legs     = rank(tally(M, m => m.p1, m => m.sp1), minGames).map(asLegend);
   const oppRows  = tally(M, m => m.e1);
-  const easiest  = rank(oppRows, minGames, -1).filter(r => r.rate > 50).map(asLegend);
-  const hardest  = rank(oppRows, minGames,  1).filter(r => r.rate < 50).map(asLegend);
 
   // Titles read "Colin's nemeses" when scoped, "Nemeses" when combined — so they must
   // be capitalised explicitly rather than relying on the CSS uppercase.
   const legTitle  = whose ? `${whose}legends` : "Combined legends";
-  const preyTitle = whose ? `${whose}favourite prey` : "Favourite prey";
-  const nemTitle  = whose ? `${whose}nemeses` : "Nemeses";
   const facedTitle = whose ? `${whose}most faced` : "Most faced";
 
   return listCard(legTitle,
       `Win rate with each pick, and ◈ average stocks left over ${M.length} solo match${M.length===1?"":"es"}.`,
       legs)
-    + quadrantCard(facedTitle, oppRows)
-    + listCard(preyTitle, "Opponent legends with a losing record against you.",
-        easiest, `No opponent legend is above 50% with ${minGames}+ matches yet.`)
-    + listCard(nemTitle, "Opponent legends that beat you more often than not — practise against these.",
-        hardest, `Nothing below 50% with ${minGames}+ matches. Enjoy it while it lasts.`);
+    + quadrantCard(facedTitle, oppRows);
 }
 
 /** The 1v1 answer to "who's better": two independent solo records, side by side. */
@@ -1365,9 +1355,6 @@ function cards2v2(M){
   // --- enemy legends: count each match once per distinct enemy legend.
   // Split at 50% so the two cards never show the same legend twice. ---
   const enemyRows = tally(M, m => [...new Set([m.e1, m.e2])]);
-  const asLegend = r => rowHTML(portrait(r.key,"sm"), esc(nameOf(r.key)), r);
-  const easiest = rank(enemyRows, minGames, -1).filter(r => r.rate > 50).map(asLegend);
-  const hardest = rank(enemyRows, minGames,  1).filter(r => r.rate < 50).map(asLegend);
 
   // --- enemy comps (unordered pair) you have a losing record against ---
   const ecomps = rank(tally(M, m => [m.e1, m.e2].sort().join("|")), minGames, 1)
@@ -1381,10 +1368,6 @@ function cards2v2(M){
     + listCard(`${p1}'s legends`, `Team win rate with each pick, and ◈ ${p1}'s own average stocks left.`, legs1)
     + listCard(`${p2}'s legends`, `Team win rate with each pick, and ◈ ${p2}'s own average stocks left.`, legs2)
     + quadrantCard("Most faced", enemyRows)
-    + listCard("Favourite prey", "Enemy legends you have a winning record against.",
-        easiest, `No enemy legend is above 50% with ${minGames}+ matches yet.`)
-    + listCard("Nemeses", "Enemy legends that beat you more often than not — practise against these.",
-        hardest, `Nothing below 50% with ${minGames}+ matches. Enjoy it while it lasts.`)
     + listCard("Toughest enemy duos", "Enemy pairings with a winning record against you.",
         ecomps, `No enemy duo is beating you over ${minGames}+ matches.`);
 }
