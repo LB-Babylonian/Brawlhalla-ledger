@@ -101,12 +101,18 @@ Default is 3 stocks each. Change it under **Data → Stocks / player** for custo
 | **Best duos** | Which pairing to lock in — ordered, so "you on Bödvar" ≠ "her on Bödvar" |
 | **Better player** | Your own average stocks left, how often each of you survives, and how many wins you closed out alone after your partner died |
 | **Colin's / Yesmine's legends** | Team win rate per pick, plus ◈ that player's own average stocks left — how Petra and Sidra really compare to your alternates |
-| **Most faced** | Every enemy legend you've met, most frequent first, with the record against each |
+| **Most faced** | A quadrant plot: how often you meet each legend against how often you beat it — the red corner is what to practise |
 | **Favourite prey** / **Nemeses** | Enemy legends you beat, and the ones to practise against |
 | **Toughest enemy duos** | Enemy pairings with a winning record over you |
 
 Every row shows its sample size, and the **Minimum matches** filter defaults to 3+ so a
 single lucky game never crowns a "best" anything.
+
+**Most faced** is the one chart. Encounters on the x axis, win rate on the y, split at 50%
+and at the median number of encounters — so a legend in the bottom-right is one you meet
+often *and* lose to, which is the only quadrant that tells you what to go practise. Points
+are nudged apart when they collide but never across a divider, since the quadrant is the
+claim. Tap a portrait for its exact numbers; phones have no hover.
 
 ## Where your data lives — and how to not lose it
 
