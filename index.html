@@ -333,9 +333,21 @@ nav.tabs{display:flex;gap:8px;margin:0 0 18px;flex-wrap:wrap}
 .quad .qpt:focus{outline:none}
 .quad .qpt.on .qring{stroke:var(--gold);stroke-width:3.5}
 
-.quad .qnum{font-family:var(--body);font-size:11.5px;font-weight:700;fill:var(--ink-dim);
-  font-variant-numeric:tabular-nums;paint-order:stroke;stroke:rgba(10,14,28,.85);stroke-width:3px}
-.quad .qnum.g{fill:var(--green)} .quad .qnum.r{fill:var(--red)} .quad .qnum.e{fill:var(--gold)}
+/* Tooltip sits on the CARD, not inside .quadwrap: that box scrolls sideways and
+   would clip anything reaching above the plot. */
+.card.wide{position:relative}
+.qtip{position:absolute;z-index:6;pointer-events:none;min-width:140px;padding:9px 12px;
+  background:linear-gradient(160deg,var(--panel-2),var(--panel));
+  box-shadow:inset 0 0 0 1px rgba(255,194,71,.45),0 12px 28px rgba(0,0,0,.6)}
+.qtip[hidden]{display:none}
+.qtip .t-name{display:block;font-family:var(--display);font-size:15px;letter-spacing:.9px;
+  color:var(--gold);margin-bottom:5px}
+.qtip .t-row{display:flex;justify-content:space-between;align-items:baseline;gap:16px;line-height:1.6}
+.qtip .t-k{font-size:9.5px;letter-spacing:1.2px;text-transform:uppercase;color:var(--ink-faint);
+  font-weight:700}
+.qtip .t-v{font-size:13px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--ink)}
+.qtip .t-v.good{color:var(--green)} .qtip .t-v.bad{color:var(--red)} .qtip .t-v.even{color:var(--gold)}
+
 .quad .qpt{transition:opacity .15s}
 .quad .qpt.dim{opacity:.13}
 .quad .qpt.hit .qring{stroke:var(--gold);stroke-width:4}
@@ -1109,7 +1121,7 @@ function quadrantChart(rows){
       for(let j = i + 1; j < pts.length; j++){
         const a = pts[i], b = pts[j];
         let dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy);
-        const min = rad * 2 + 15;   // room for the label under each point
+        const min = rad * 2 + 3;
         if(d >= min) continue;
         if(d < 0.001){ dx = 0.6; dy = 0.8; d = 1; }
         const push = (min - d) / 2, ux = dx / d, uy = dy / d;
@@ -1123,12 +1135,12 @@ function quadrantChart(rows){
   const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
   for(const p of pts){
     p.x = clamp(p.x, x0 + rad, x1 - rad);
-    p.y = clamp(p.y, y0 + rad, y1 - rad - 14);   // keep the label inside the frame
+    p.y = clamp(p.y, y0 + rad, y1 - rad);
     // keep each point on the side of the dividers its real numbers put it on
     if(p.r.n > med)      p.x = clamp(p.x, vx + 2, x1 - rad);
     else if(p.r.n < med) p.x = clamp(p.x, x0 + rad, vx - 2);
     if(p.r.rate > 50)      p.y = clamp(p.y, y0 + rad, hy - 2);
-    else if(p.r.rate < 50) p.y = clamp(p.y, hy + 2, y1 - rad - 14);
+    else if(p.r.rate < 50) p.y = clamp(p.y, hy + 2, y1 - rad);
   }
 
   const tint = (x, y, w, h, fill) =>
@@ -1144,16 +1156,15 @@ function quadrantChart(rows){
     `<line x1="${x0}" y1="${Y(v)}" x2="${x1}" y2="${Y(v)}" class="qgrid"/>`
     + `<text x="${x0 - 8}" y="${Y(v) + 4}" text-anchor="end" class="qtick">${v}%</text>`).join("");
 
-  const dots = pts.map(p => `<g class="qpt" data-k="${p.r.key}" tabindex="0">
-      <title>${esc(nameOf(p.r.key))} — faced ${p.r.n}, ${p.r.w}W ${p.r.l}L, ${p.r.rate}%</title>
+  const dots = pts.map(p => `<g class="qpt" data-k="${p.r.key}" tabindex="0"
+      data-name="${esc(nameOf(p.r.key))}" data-n="${p.r.n}" data-w="${p.r.w}"
+      data-l="${p.r.l}" data-rate="${p.r.rate}"
+      role="img" aria-label="${esc(nameOf(p.r.key))}: faced ${p.r.n}, ${p.r.w} wins ${p.r.l} losses, ${p.r.rate}%">
       <circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${rad + 2}"
               class="qring ${p.r.rate >= 55 ? "g" : p.r.rate <= 45 ? "r" : "e"}"/>
       <image href="assets/legends/${p.r.key}.png" x="${(p.x - rad).toFixed(1)}"
              y="${(p.y - rad).toFixed(1)}" width="${rad * 2}" height="${rad * 2}"
              clip-path="url(#qclip)" preserveAspectRatio="xMidYMid slice"/>
-      <text x="${p.x.toFixed(1)}" y="${(p.y + rad + 13).toFixed(1)}" text-anchor="middle"
-            class="qnum ${p.r.rate >= 55 ? "g" : p.r.rate <= 45 ? "r" : "e"}"
-            >&times;${p.r.n} &middot; ${p.r.rate}%</text>
     </g>`).join("");
 
   return `<svg viewBox="0 0 ${W} ${H}" class="quad" role="img"
@@ -1190,6 +1201,7 @@ function quadrantCard(title, rows){
     <input class="qsearch cut-sm" id="qsearch" type="search" autocomplete="off"
            spellcheck="false" placeholder="Find a legend on the plot\u2026">
     <div class="quadwrap">${quadrantChart(rows)}</div>
+    <div class="qtip cut-sm" id="qtip" hidden></div>
   </div>`;
 }
 
@@ -1267,6 +1279,37 @@ function renderStats(){
   $$("#statsbody .chip[data-solo]").forEach(c => c.addEventListener("click", () => {
     soloPlayer = c.dataset.solo; renderStats(); updateSubtitle();
   }));
+
+  // Tooltip. Hover on a desktop, tap on a phone — and it is positioned against the
+  // card so it can reach above the plot without the scroll box clipping it.
+  const card = $("#statsbody .card.wide"), tip = $("#qtip");
+  if(card && tip){
+    const hide = () => { tip.hidden = true; };
+    const show = g => {
+      const d = g.dataset;
+      const cls = +d.rate >= 55 ? "good" : +d.rate <= 45 ? "bad" : "even";
+      tip.innerHTML = `<span class="t-name">${esc(d.name)}</span>`
+        + `<span class="t-row"><span class="t-k">Faced</span><span class="t-v">${d.n}</span></span>`
+        + `<span class="t-row"><span class="t-k">Record</span><span class="t-v">${d.w}W ${d.l}L</span></span>`
+        + `<span class="t-row"><span class="t-k">Win rate</span><span class="t-v ${cls}">${d.rate}%</span></span>`;
+      tip.hidden = false;                       // must be laid out before measuring
+      const cr = card.getBoundingClientRect(), gr = g.getBoundingClientRect();
+      const tw = tip.offsetWidth, th = tip.offsetHeight;
+      let left = gr.left - cr.left + gr.width / 2 - tw / 2;
+      left = Math.max(6, Math.min(left, cr.width - tw - 6));
+      let top = gr.top - cr.top - th - 10;
+      if(top < 4) top = gr.bottom - cr.top + 10; // flip under the point near the top edge
+      tip.style.left = `${left}px`;
+      tip.style.top  = `${top}px`;
+    };
+    const onPoint = e => { const g = e.target.closest(".qpt"); g ? show(g) : hide(); };
+    card.addEventListener("mouseover", onPoint);
+    card.addEventListener("click", onPoint);    // taps on a phone
+    card.addEventListener("focusin", onPoint);
+    card.addEventListener("mouseleave", hide);
+    const wrap = $("#statsbody .quadwrap");
+    if(wrap) wrap.addEventListener("scroll", hide);
+  }
 
   // Searching the plot dims everything else rather than removing it, so you keep
   // the sense of where the match sits among the rest.

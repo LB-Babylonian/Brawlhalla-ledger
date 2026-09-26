@@ -111,8 +111,9 @@ single lucky game never crowns a "best" anything.
 and at the median number of encounters — so a legend in the bottom-right is one you meet
 often *and* lose to, which is the only quadrant that tells you what to go practise. Points
 are nudged apart when they collide but never across a divider, since the quadrant is the
-claim. Each point carries its own `×6 · 83%`, and the search box above the plot highlights a
-legend while dimming the rest, so you keep the sense of where it sits among the others.
+claim. Hover or tap a portrait for a styled tooltip with the encounter count, the record and
+the win rate; the search box above the plot highlights a legend while dimming the rest, so you
+keep the sense of where it sits among the others.
 
 It replaced the old *Favourite prey* and *Nemeses* lists outright: both were just this chart's
 top and bottom halves, ranked, and the plot says the same thing while also showing how much
