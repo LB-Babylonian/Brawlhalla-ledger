@@ -282,7 +282,12 @@ nav.tabs{display:flex;gap:8px;margin:0 0 18px;flex-wrap:wrap}
 .kpi .n{font-size:11.5px;color:var(--ink-faint);margin-top:2px}
 .v.good{color:var(--green)} .v.bad{color:var(--red)} .v.gold{color:var(--gold)}
 
-.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px}
+/* Columns, not grid: grid rows stretch every card to the tallest in the row, which
+   left ~330px of empty panel under the short ones and stranded the leftovers alone
+   on their own row. Columns pack them by height instead. */
+.cards{columns:3 320px;column-gap:14px}
+.cards > .card{break-inside:avoid;-webkit-column-break-inside:avoid;
+  display:inline-block;width:100%;margin:0 0 14px}
 .card h3{font-size:15px;letter-spacing:1.7px;color:var(--gold);margin-bottom:3px}
 .card .hint{font-size:11.5px;color:var(--ink-faint);margin-bottom:12px}
 
@@ -321,7 +326,6 @@ nav.tabs{display:flex;gap:8px;margin:0 0 18px;flex-wrap:wrap}
 
 
 /* Quadrant plot ------------------------------------------------- */
-.card.wide{grid-column:1/-1}
 /* The plot needs room: below ~560px the labels would shrink past legibility, so it
    scrolls inside its own box rather than the page scrolling sideways. Capped on the
    wide side too, so a full-width desktop card doesn't blow the type up. */
@@ -346,7 +350,7 @@ nav.tabs{display:flex;gap:8px;margin:0 0 18px;flex-wrap:wrap}
 
 /* Tooltip sits on the CARD, not inside .quadwrap: that box scrolls sideways and
    would clip anything reaching above the plot. */
-.card.wide{position:relative}
+.card.wide{position:relative;margin-bottom:14px}
 .qtip{position:absolute;z-index:6;pointer-events:none;min-width:140px;padding:9px 12px;
   background:linear-gradient(160deg,var(--panel-2),var(--panel));
   box-shadow:inset 0 0 0 1px rgba(255,194,71,.45),0 12px 28px rgba(0,0,0,.6)}
@@ -1120,15 +1124,39 @@ function quadrantChart(rows){
   const W = 660, H = 420, L = 48, R = 20, T = 34, B = 40;
   const x0 = L, x1 = W - R, y0 = T, y1 = H - B, rad = 16;
 
-  const maxN = Math.max(...rows.map(r => r.n));
-  const xmax = Math.max(2, maxN + Math.max(0.6, maxN * 0.12));
-  const X = n => x0 + (n / xmax) * (x1 - x0);
-  const Y = p => y1 - (p / 100) * (y1 - y0);
-
   const counts = rows.map(r => r.n).sort((a, b) => a - b);
   const k = counts.length;
   const med = k % 2 ? counts[(k - 1) / 2] : (counts[k / 2 - 1] + counts[k / 2]) / 2;
+
+  // Fit the axes to the data rather than anchoring x at zero. Once you have a few
+  // hundred matches every opponent has been met 25-45 times, and a 0-based axis
+  // squeezes the whole cloud into the right-hand third. Both domains are widened
+  // to always contain their divider, so the four quadrants never collapse.
+  const rates = rows.map(r => r.rate);
+  const nMin = Math.min(...counts), nMax = Math.max(...counts);
+  const nPad = Math.max(1, (nMax - nMin) * 0.16);
+  const xLo = Math.max(0, Math.min(nMin - nPad, med - nPad));
+  const xHi = Math.max(nMax + nPad, med + nPad, xLo + 2);
+  const rMin = Math.min(...rates), rMax = Math.max(...rates);
+  const rPad = Math.max(6, (rMax - rMin) * 0.16);
+  const yLo = Math.max(0, Math.min(rMin - rPad, 50 - rPad));
+  const yHi = Math.min(100, Math.max(rMax + rPad, 50 + rPad, yLo + 12));
+
+  const X = n => x0 + ((n - xLo) / (xHi - xLo)) * (x1 - x0);
+  const Y = p => y1 - ((p - yLo) / (yHi - yLo)) * (y1 - y0);
   const vx = X(med), hy = Y(50);
+
+  /** ~5 round values inside a domain, so the ticks don't read as noise. */
+  const niceTicks = (lo, hi, want, intOnly) => {
+    const raw = (hi - lo) / want;
+    const mag = Math.pow(10, Math.floor(Math.log10(Math.max(raw, 1e-6))));
+    let step = [1, 2, 2.5, 5, 10].map(m => m * mag).find(v => v >= raw) || 10 * mag;
+    if(intOnly) step = Math.max(1, Math.round(step));
+    const out = [];
+    for(let v = Math.ceil(lo / step) * step; v <= hi + 1e-9; v += step)
+      out.push(intOnly ? Math.round(v) : +v.toFixed(2));
+    return out;
+  };
 
   // relax overlaps
   const pts = rows.map(r => ({ r, x: X(r.n), y: Y(r.rate), tx: X(r.n), ty: Y(r.rate) }));
@@ -1165,13 +1193,11 @@ function quadrantChart(rows){
   const qlabel = (x, y, anchor, text, cls) =>
     `<text x="${x}" y="${y}" text-anchor="${anchor}" class="qlab ${cls || ""}">${text}</text>`;
 
-  const xticks = [];
-  const step = Math.max(1, Math.ceil(maxN / 5));
-  for(let n = 0; n <= maxN; n += step)
-    xticks.push(`<text x="${X(n)}" y="${y1 + 18}" text-anchor="middle" class="qtick">${n}</text>`);
-  const yticks = [0, 25, 50, 75, 100].map(v =>
-    `<line x1="${x0}" y1="${Y(v)}" x2="${x1}" y2="${Y(v)}" class="qgrid"/>`
-    + `<text x="${x0 - 8}" y="${Y(v) + 4}" text-anchor="end" class="qtick">${v}%</text>`).join("");
+  const xticks = niceTicks(xLo, xHi, 6, true).map(n =>
+    `<text x="${X(n).toFixed(1)}" y="${y1 + 18}" text-anchor="middle" class="qtick">${n}</text>`);
+  const yticks = niceTicks(yLo, yHi, 5, true).map(v =>
+    `<line x1="${x0}" y1="${Y(v).toFixed(1)}" x2="${x1}" y2="${Y(v).toFixed(1)}" class="qgrid"/>`
+    + `<text x="${x0 - 8}" y="${(Y(v) + 4).toFixed(1)}" text-anchor="end" class="qtick">${v}%</text>`).join("");
 
   const dots = pts.map(p => `<g class="qpt" data-k="${p.r.key}" tabindex="0"
       data-name="${esc(nameOf(p.r.key))}" data-n="${p.r.n}" data-w="${p.r.w}"
@@ -1281,13 +1307,19 @@ function renderStats(){
     if(soloPlayer === null) soloPlayer = S.who;
     const M = soloPlayer === "both" ? all : all.filter(m => m.who === soloPlayer);
     const whose = soloPlayer === "both" ? "" : `${esc(S.players[soloPlayer])}'s `;
-    box.innerHTML = playerChips()
-      + (M.length ? kpiRow(M) + minChips() + `<div class="cards">${soloRecordCard(all)}${cards1v1(M, whose)}</div>`
-                  : `<div class="panel cut"><div class="empty">
-                       ${esc(S.players[soloPlayer])} hasn't logged a 1v1 yet.</div></div>
-                     <div class="cards" style="margin-top:14px">${soloRecordCard(all)}</div>`);
+    if(M.length){
+      const built = cards1v1(M, whose);
+      box.innerHTML = playerChips() + kpiRow(M) + minChips() + built.plot
+        + `<div class="cards">${soloRecordCard(all)}${built.deck}</div>`;
+    } else {
+      box.innerHTML = playerChips()
+        + `<div class="panel cut"><div class="empty">
+             ${esc(S.players[soloPlayer])} hasn't logged a 1v1 yet.</div></div>
+           <div class="cards" style="margin-top:14px">${soloRecordCard(all)}</div>`;
+    }
   } else {
-    box.innerHTML = kpiRow(all) + minChips() + `<div class="cards">${cards2v2(all)}</div>`;
+    const built = cards2v2(all);
+    box.innerHTML = kpiRow(all) + minChips() + built.plot + `<div class="cards">${built.deck}</div>`;
   }
 
   $$("#statsbody .chip[data-min]").forEach(c => c.addEventListener("click", () => {
@@ -1354,10 +1386,12 @@ function cards1v1(M, whose){
   const legTitle  = whose ? `${whose}legends` : "Combined legends";
   const facedTitle = whose ? `${whose}most faced` : "Most faced";
 
-  return listCard(legTitle,
+  return {
+    plot: quadrantCard(facedTitle, oppRows),
+    deck: listCard(legTitle,
       `Win rate with each pick, and ◈ average stocks left over ${M.length} solo match${M.length===1?"":"es"}.`,
       legs)
-    + quadrantCard(facedTitle, oppRows);
+  };
 }
 
 /** The 1v1 answer to "who's better": two independent solo records, side by side. */
@@ -1423,13 +1457,15 @@ function cards2v2(M){
       return rowHTML(portrait(a,"sm") + portrait(b,"sm"), `${esc(nameOf(a))} <span style="color:var(--ink-faint)">+</span> ${esc(nameOf(b))}`, r);
     });
 
-  return listCard("Best duos", `Your legend pairings — ${p1} first, ${p2} second.`, comps)
-    + betterPlayerCard(M)
-    + listCard(`${p1}'s legends`, `Team win rate with each pick, and ◈ ${p1}'s own average stocks left.`, legs1)
-    + listCard(`${p2}'s legends`, `Team win rate with each pick, and ◈ ${p2}'s own average stocks left.`, legs2)
-    + quadrantCard("Most faced", enemyRows)
-    + listCard("Toughest enemy duos", "Enemy pairings with a winning record against you.",
-        ecomps, `No enemy duo is beating you over ${minGames}+ matches.`);
+  return {
+    plot: quadrantCard("Most faced", enemyRows),
+    deck: listCard("Best duos", `Your legend pairings — ${p1} first, ${p2} second.`, comps)
+      + betterPlayerCard(M)
+      + listCard(`${p1}'s legends`, `Team win rate with each pick, and ◈ ${p1}'s own average stocks left.`, legs1)
+      + listCard(`${p2}'s legends`, `Team win rate with each pick, and ◈ ${p2}'s own average stocks left.`, legs2)
+      + listCard("Toughest enemy duos", "Enemy pairings with a winning record against you.",
+          ecomps, `No enemy duo is beating you over ${minGames}+ matches.`)
+  };
 }
 
 /**

@@ -118,6 +118,15 @@ claim. Hover or tap a portrait for a styled tooltip with the encounter count, th
 the win rate; the search box above the plot highlights a legend while dimming the rest, so you
 keep the sense of where it sits among the others.
 
+Both axes fit the data rather than starting at zero — after a few hundred matches every
+opponent has been met 25-45 times, and a 0-based axis squeezed the whole cloud into the
+right-hand third. Each domain is widened as needed to still contain its divider, so the four
+quadrants never collapse into two.
+
+The plot sits above the card deck rather than inside it, and the deck itself is a column
+layout, not a grid: grid rows stretch every card to the tallest in the row, which left ~330px
+of empty panel under the short ones and stranded the leftovers alone on their own row.
+
 It replaced the old *Favourite prey* and *Nemeses* lists outright: both were just this chart's
 top and bottom halves, ranked, and the plot says the same thing while also showing how much
 each matchup actually matters.
