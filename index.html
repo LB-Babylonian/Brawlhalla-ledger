@@ -85,6 +85,17 @@ header{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:18p
   -webkit-background-clip:text;background-clip:text;color:transparent;
   filter:drop-shadow(0 2px 0 rgba(0,0,0,.5));}
 .title .sub{font-size:12px;letter-spacing:2.4px;text-transform:uppercase;color:var(--ink-faint);margin-top:3px}
+.title .sub .mcount{font-variant-numeric:tabular-nums}
+/* Round-number milestone: a slow gold breath on the count itself. */
+.title .sub .mcount.milestone{color:var(--gold);font-weight:700;
+  animation:milestone 2.4s ease-in-out infinite}
+@keyframes milestone{
+  0%,100%{text-shadow:0 0 4px rgba(255,194,71,.45)}
+  50%{text-shadow:0 0 9px rgba(255,194,71,.95),0 0 20px rgba(255,194,71,.55)}
+}
+@media (prefers-reduced-motion:reduce){
+  .title .sub .mcount.milestone{animation:none;text-shadow:0 0 8px rgba(255,194,71,.8)}
+}
 .spacer{flex:1}
 
 /* Mode switch (2v2 / 1v1) --------------------------------------- */
@@ -1030,7 +1041,13 @@ function updateSubtitle(){
   const n = M.length;
   if(!n){ $("#subtitle").textContent = `${S.mode}${scopeLabel} — no matches yet`; return; }
   const w = M.filter(isWin).length;
-  $("#subtitle").textContent = `${S.mode}${scopeLabel} · ${n} match${n>1?"es":""} · ${pct(w,n)}% win rate`;
+  // Every 50th match is worth noticing, so the count glows instead of just ticking over.
+  const milestone = n % 50 === 0;
+  $("#subtitle").innerHTML =
+    `${esc(S.mode)}${esc(scopeLabel)} &middot; `
+    + `<span class="mcount${milestone ? " milestone" : ""}"`
+    + `${milestone ? ` title="${n} matches — a round number"` : ""}>${n}</span>`
+    + ` match${n > 1 ? "es" : ""} &middot; ${pct(w, n)}% win rate`;
 }
 
 /* ============================================================

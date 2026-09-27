@@ -104,6 +104,9 @@ Default is 3 stocks each. Change it under **Data → Stocks / player** for custo
 | **Most faced** | A quadrant plot: how often you meet each legend against how often you beat it — the red corner is what to practise |
 | **Toughest enemy duos** | Enemy pairings with a winning record over you |
 
+The match count in the header glows gold on every multiple of 50 — a small nod when you hit a
+round number. It counts per ladder, so 2v2 and 1v1 reach their milestones independently.
+
 Every row shows its sample size, and the **Minimum matches** filter defaults to 3+ so a
 single lucky game never crowns a "best" anything.
 
