@@ -118,10 +118,19 @@ claim. Hover or tap a portrait for a styled tooltip with the encounter count, th
 the win rate; the search box above the plot highlights a legend while dimming the rest, so you
 keep the sense of where it sits among the others.
 
-Both axes fit the data rather than starting at zero — after a few hundred matches every
-opponent has been met 25-45 times, and a 0-based axis squeezed the whole cloud into the
-right-hand third. Each domain is widened as needed to still contain its divider, so the four
-quadrants never collapse into two.
+Both axes fit the data rather than starting at zero, and the x transform is **chosen from
+the shape of the data**, because the two realistic cases need opposite things. Across a full
+roster the counts are heavily skewed — most legends turn up a handful of times, a couple turn
+up constantly — and a linear axis piles ~90% of them into the first quarter; there the axis
+goes logarithmic. A settled pool instead sits in a narrow band like 28-45, where log would
+squash it, so that stays linear. The rule is simply whether the widest count is 4× the
+narrowest, and the axis label says which one is in play.
+
+Y stays linear whatever happens: a percentage axis that stretched the middle would blow small,
+noisy differences around 50% out of proportion. Fitting the domain is enough.
+
+Each domain is widened as needed to still contain its divider, so the four quadrants never
+collapse into two.
 
 The plot sits above the card deck rather than inside it, and the deck itself is a column
 layout, not a grid: grid rows stretch every card to the tallest in the row, which left ~330px
